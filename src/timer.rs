@@ -14,7 +14,7 @@ impl TimerContext{
             tac: 0
         }
     }
-    fn timer_tick(&mut self, cycles: u64){
+    pub fn timer_tick(&mut self, cycles: u64){
         let tac_bit = (self.tac >> 2) & 0b11;
         let inc_rate = match tac_bit {
             0b00 => 1024,

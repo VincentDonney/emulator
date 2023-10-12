@@ -1,14 +1,6 @@
-use crate::instruction::ArithmeticTarget;
-use crate::instruction::IncDecTarget;
-use crate::instruction::Instruction;
-use crate::instruction::JumpTarget;
-use crate::instruction::JumpTest;
-use crate::instruction::LoadByteSource;
-use crate::instruction::LoadByteTarget;
-use crate::instruction::LoadType;
-use crate::instruction::PrefixTarget;
-use crate::instruction::StackTarget;
+use crate::instruction::*;
 use crate::register;
+use crate::timer;
 
 
 
@@ -16,7 +8,7 @@ struct CPU{
     registers:register::Registers,
     program_counter:u16,
     stack_pointer:u16,
-    clock:TimerContext,
+    clock:timer::TimerContext,
     bus:MemoryBus,
     is_halted:bool
 }
@@ -67,52 +59,62 @@ impl CPU {
               let value = self.registers.b;
               let new_value = self.add(value);
               self.registers.a = new_value;
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             }
             ArithmeticTarget::C => {
               let value = self.registers.c;
               let new_value = self.add(value);
               self.registers.a = new_value;
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             }
             ArithmeticTarget::D => {
               let value = self.registers.d;
               let new_value = self.add(value);
               self.registers.a = new_value;
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             }
             ArithmeticTarget::E => {
               let value = self.registers.e;
               let new_value = self.add(value);
               self.registers.a = new_value;
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             }
             ArithmeticTarget::H => {
               let value = self.registers.c;
               let new_value = self.add(value);
               self.registers.a = new_value;
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             }
             ArithmeticTarget::L => {
               let value = self.registers.l;
               let new_value = self.add(value);
               self.registers.a = new_value;
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             }
             ArithmeticTarget::HL => {
               //TODO
+              self.clock.timer_tick(8);
               self.program_counter.wrapping_add(1)
             }
             ArithmeticTarget::D8 => {
               //TODO
+              self.clock.timer_tick(8);
               self.program_counter.wrapping_add(2)
             }
             ArithmeticTarget::A => {
               //TODO
+              self.clock.timer_tick(8);
               self.program_counter.wrapping_add(1)
             }
             ArithmeticTarget::SP => {
               //TODO
+              self.clock.timer_tick(8);
               self.program_counter.wrapping_add(1)
             }
             _ => {self.program_counter}
@@ -125,6 +127,7 @@ impl CPU {
               let (new_value, did_overflow) = self.sub(value);
               self.registers.a = new_value;
               self.update_flags(new_value, did_overflow);
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             }
             ArithmeticTarget::B => {
@@ -132,6 +135,7 @@ impl CPU {
               let (new_value, did_overflow) = self.sub(value);
               self.registers.a = new_value;
               self.update_flags(new_value, did_overflow);
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             }
             ArithmeticTarget::C => {
@@ -139,6 +143,7 @@ impl CPU {
               let (new_value, did_overflow) = self.sub(value);
               self.registers.a = new_value;
               self.update_flags(new_value, did_overflow);
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             }
             ArithmeticTarget::D => {
@@ -146,6 +151,7 @@ impl CPU {
               let (new_value, did_overflow) = self.sub(value);
               self.registers.a = new_value;
               self.update_flags(new_value, did_overflow);
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             }
             ArithmeticTarget::E => {
@@ -153,6 +159,7 @@ impl CPU {
               let (new_value, did_overflow) = self.sub(value);
               self.registers.a = new_value;
               self.update_flags(new_value, did_overflow);
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             }
             ArithmeticTarget::H => {
@@ -160,6 +167,7 @@ impl CPU {
               let (new_value, did_overflow) = self.sub(value);
               self.registers.a = new_value;
               self.update_flags(new_value, did_overflow);
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             }
             ArithmeticTarget::L => {
@@ -167,14 +175,17 @@ impl CPU {
               let (new_value, did_overflow) = self.sub(value);
               self.registers.a = new_value;
               self.update_flags(new_value, did_overflow);
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             }
             ArithmeticTarget::HL => {
               //TODO
+              self.clock.timer_tick(8);
               self.program_counter.wrapping_add(1)
             }
             ArithmeticTarget::D8 => {
               //TODO
+              self.clock.timer_tick(8);
               self.program_counter.wrapping_add(2)
             }
             _=>{self.program_counter}    
@@ -185,44 +196,53 @@ impl CPU {
             ArithmeticTarget::A => {
               let value = self.registers.a;
               self.and(value);
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             }
             ArithmeticTarget::B => {
               let value = self.registers.b;
               self.and(value);
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             }
             ArithmeticTarget::C => {
               let value = self.registers.c;
               self.and(value);
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             }
             ArithmeticTarget::D => {
               let value = self.registers.d;
               self.and(value);
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             }
             ArithmeticTarget::E => {
               let value = self.registers.e;
               self.and(value);
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             }
             ArithmeticTarget::H => {
               let value = self.registers.h;
               self.and(value);
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             }
             ArithmeticTarget::L => {
               let value = self.registers.l;
               self.and(value);
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             }
             ArithmeticTarget::HL => {
               //TODO
+              self.clock.timer_tick(8);
               self.program_counter.wrapping_add(1)
             }
             ArithmeticTarget::D8 => {
               //TODO
+              self.clock.timer_tick(8);
               self.program_counter.wrapping_add(2)
             }
             _=>{self.program_counter}
@@ -232,30 +252,37 @@ impl CPU {
           match target {
             ArithmeticTarget::A => {
               self.sbc(&mut self.registers.a);
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             ArithmeticTarget::B => {
               self.sbc(&mut self.registers.b);
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             ArithmeticTarget::C => {
               self.sbc(&mut self.registers.c);
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             ArithmeticTarget::D => {
               self.sbc(&mut self.registers.d);
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             ArithmeticTarget::E => {
               self.sbc(&mut self.registers.e);
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             ArithmeticTarget::H => {
               self.sbc(&mut self.registers.h);
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             ArithmeticTarget::L => {
               self.sbc(&mut self.registers.l);
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             ArithmeticTarget::HL => {
@@ -263,10 +290,12 @@ impl CPU {
                 let address = self.registers.get_hl();
                 let value = self.bus.read_byte(address);
                 self.sbc_hl(value);
+                self.clock.timer_tick(8);
                 self.program_counter.wrapping_add(1)
             }
             ArithmeticTarget::D8 =>{
               //TODO
+              self.clock.timer_tick(8);
               self.program_counter.wrapping_add(2)
             },
             _=>{self.program_counter.wrapping_add(1)}
@@ -276,30 +305,37 @@ impl CPU {
           match target {
             ArithmeticTarget::A => {
               self.or(&mut self.registers.a);
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             ArithmeticTarget::B => {
               self.or(&mut self.registers.b);
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             ArithmeticTarget::C => {
               self.or(&mut self.registers.c);
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             ArithmeticTarget::D => {
               self.or(&mut self.registers.d);
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             ArithmeticTarget::E => {
               self.or(&mut self.registers.e);
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             ArithmeticTarget::H => {
               self.or(&mut self.registers.h);
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             ArithmeticTarget::L => {
               self.or(&mut self.registers.l);
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             ArithmeticTarget::HL => {
@@ -307,10 +343,12 @@ impl CPU {
                 let address = self.registers.get_hl();
                 let value = self.bus.read_byte(address);
                 self.or_hl(value);
+                self.clock.timer_tick(8);
                 self.program_counter.wrapping_add(1)
             }
             ArithmeticTarget::D8 => {
               //TODO
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(2)
             },
             _=>{self.program_counter.wrapping_add(1)}
@@ -320,30 +358,37 @@ impl CPU {
           match target {
             ArithmeticTarget::A => {
               self.xor(&mut self.registers.a);
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             ArithmeticTarget::B => {
               self.xor(&mut self.registers.b);
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             ArithmeticTarget::C => {
               self.xor(&mut self.registers.c);
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             ArithmeticTarget::D => {
               self.xor(&mut self.registers.d);
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             ArithmeticTarget::E => {
               self.xor(&mut self.registers.e);
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             ArithmeticTarget::H => {
               self.xor(&mut self.registers.h);
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             ArithmeticTarget::L => {
               self.xor(&mut self.registers.l);
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             ArithmeticTarget::HL => {
@@ -351,10 +396,12 @@ impl CPU {
                 let address = self.registers.get_hl();
                 let value = self.bus.read_byte(address);
                 self.xor_hl(value);
+                self.clock.timer_tick(8);
                 self.program_counter.wrapping_add(1)
             }
             ArithmeticTarget::D8 => {
               //TODO
+              self.clock.timer_tick(8);
               self.program_counter.wrapping_add(2)
             },
             _=>{self.program_counter.wrapping_add(1)}
@@ -364,30 +411,37 @@ impl CPU {
           match target {
             ArithmeticTarget::A => {
               self.cp(&self.registers.a);
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             ArithmeticTarget::B => {
               self.cp(&self.registers.b);
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             ArithmeticTarget::C => {
               self.cp(&self.registers.c);
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             ArithmeticTarget::D => {
               self.cp(&self.registers.d);
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             ArithmeticTarget::E => {
               self.cp(&self.registers.e);
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             ArithmeticTarget::H => {
               self.cp(&self.registers.h);
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             ArithmeticTarget::L => {
               self.cp(&self.registers.l);
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             ArithmeticTarget::HL => {
@@ -395,10 +449,12 @@ impl CPU {
                 let address = self.registers.get_hl();
                 let value = self.bus.read_byte(address);
                 self.cp(&value);
+                self.clock.timer_tick(8);
                 self.program_counter.wrapping_add(1)
             }
             ArithmeticTarget::D8 => {
               //TODO
+              self.clock.timer_tick(8);
               self.program_counter.wrapping_add(2)
             },
             _=>{self.program_counter.wrapping_add(1)}
@@ -408,30 +464,37 @@ impl CPU {
           match target {
             IncDecTarget::A => {
               self.inc(&mut self.registers.a);
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             IncDecTarget::B => {
               self.inc(&mut self.registers.b);
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             IncDecTarget::C => {
               self.inc(&mut self.registers.c);
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             IncDecTarget::D => {
               self.inc(&mut self.registers.d);
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             IncDecTarget::E => {
               self.inc(&mut self.registers.e);
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             IncDecTarget::H => {
               self.inc(&mut self.registers.h);
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             IncDecTarget::L => {
               self.inc(&mut self.registers.l);
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             IncDecTarget::HL => {
@@ -441,7 +504,23 @@ impl CPU {
                 self.inc(&mut value);
                 // Write the modified value back to memory
                 self.bus.write_byte(address, value);
+                self.clock.timer_tick(8);
                 self.program_counter.wrapping_add(1)
+            }
+            IncDecTarget::BC =>{
+              //TODO
+              self.clock.timer_tick(8);
+              self.program_counter.wrapping_add(1)
+            }
+            IncDecTarget::DE =>{
+              //TODO
+              self.clock.timer_tick(8);
+              self.program_counter.wrapping_add(1)
+            }
+            IncDecTarget::SP =>{
+              //TODO
+              self.clock.timer_tick(8);
+              self.program_counter.wrapping_add(1)
             }
             _=>{self.program_counter.wrapping_add(1)}
           }
@@ -450,30 +529,37 @@ impl CPU {
           match target {
             IncDecTarget::A => {
               self.dec(&mut self.registers.a);
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             IncDecTarget::B => {
               self.dec(&mut self.registers.b);
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             IncDecTarget::C => {
               self.dec(&mut self.registers.c);
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             IncDecTarget::D => {
               self.dec(&mut self.registers.d);
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             IncDecTarget::E => {
               self.dec(&mut self.registers.e);
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             IncDecTarget::H => {
               self.dec(&mut self.registers.h);
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             IncDecTarget::L => {
               self.dec(&mut self.registers.l);
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             IncDecTarget::HL => {
@@ -483,55 +569,82 @@ impl CPU {
                 self.dec(&mut value);
                 // Write the modified value back to memory
                 self.bus.write_byte(address, value);
+                self.clock.timer_tick(8);
                 self.program_counter.wrapping_add(1)
+            }
+            IncDecTarget::BC =>{
+              //TODO
+              self.clock.timer_tick(8);
+              self.program_counter.wrapping_add(1)
+            }
+            IncDecTarget::DE =>{
+              //TODO
+              self.clock.timer_tick(8);
+              self.program_counter.wrapping_add(1)
+            }
+            IncDecTarget::SP =>{
+              //TODO
+              self.clock.timer_tick(8);
+              self.program_counter.wrapping_add(1)
             }
             _ =>{self.program_counter.wrapping_add(1)}
           }
         }, 
         Instruction::CCF() => {
           self.ccf();
+          self.clock.timer_tick(4);
           self.program_counter.wrapping_add(1)
         },
         Instruction::SCF() => {
           self.scf();
+          self.clock.timer_tick(4);
           self.program_counter.wrapping_add(1)
         },
         Instruction::RRA() => {
           self.rra();
+          self.clock.timer_tick(4);
           self.program_counter.wrapping_add(1)
         },
         Instruction::RLA() => {
           self.rla();
+          self.clock.timer_tick(4);
           self.program_counter.wrapping_add(1)
         },
         Instruction::RRCA() => {
           self.rrca();
+          self.clock.timer_tick(4);
           self.program_counter.wrapping_add(1)
         },
         Instruction::RLCA() => {
           self.rlca();
+          self.clock.timer_tick(4);
           self.program_counter.wrapping_add(1)
         }, 
         Instruction::ADC(target) => {
           match target {
             ArithmeticTarget::A => {
               self.adc(self.registers.a);
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             ArithmeticTarget::B => {
               self.adc(self.registers.b);
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             ArithmeticTarget::C => {
               self.adc(self.registers.c);
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             ArithmeticTarget::D => {
               self.adc(self.registers.d);
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             ArithmeticTarget::E => {
               self.adc(self.registers.e);
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             ArithmeticTarget::H => {
@@ -540,9 +653,17 @@ impl CPU {
             },
             ArithmeticTarget::L => {
               self.adc(self.registers.l);
+              self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
-            },ArithmeticTarget::D8 => {
+            },
+            ArithmeticTarget::HL => {
               //TODO
+              self.clock.timer_tick(8);
+              self.program_counter.wrapping_add(2)
+            },
+            ArithmeticTarget::D8 => {
+              //TODO
+              self.clock.timer_tick(8);
               self.program_counter.wrapping_add(2)
             },
 
@@ -556,36 +677,44 @@ impl CPU {
           // Update flags
           self.registers.f.subtract = true;
           self.registers.f.half_carry = true;
+          self.clock.timer_tick(4);
           self.program_counter.wrapping_add(1)
         },
         Instruction::BIT(bit, target) => {
           match target {
               PrefixTarget::A => {
                 self.bit(bit, self.registers.a);
+                self.clock.timer_tick(8);
                 self.program_counter.wrapping_add(2)
               },
               PrefixTarget::B => {
                 self.bit(bit, self.registers.b);
+                self.clock.timer_tick(8);
                 self.program_counter.wrapping_add(2)
               },
               PrefixTarget::C => {
                 self.bit(bit, self.registers.c);
+                self.clock.timer_tick(8);
                 self.program_counter.wrapping_add(2)
               },
               PrefixTarget::D => {
                 self.bit(bit, self.registers.d);
+                self.clock.timer_tick(8);
                 self.program_counter.wrapping_add(2)
               },
               PrefixTarget::E => {
                 self.bit(bit, self.registers.e);
+                self.clock.timer_tick(8);
                 self.program_counter.wrapping_add(2)
               },
               PrefixTarget::H => {
                 self.bit(bit, self.registers.h);
+                self.clock.timer_tick(8);
                 self.program_counter.wrapping_add(2)
               },
               PrefixTarget::L => {
                 self.bit(bit, self.registers.l);
+                self.clock.timer_tick(8);
                 self.program_counter.wrapping_add(2)
               },
               PrefixTarget::HL => {
@@ -593,38 +722,47 @@ impl CPU {
                   let address = self.registers.get_hl();
                   let value = self.bus.read_byte(address);
                   self.bit(bit, value);
+                  self.clock.timer_tick(16);
                   self.program_counter.wrapping_add(2)
-              }
+              },
+              _=>{self.program_counter.wrapping_add(1)}
           }
         }, 
         Instruction::RES(bit, target) => {
           match target {
               PrefixTarget::A => {
                 self.res(bit, &mut self.registers.a);
+                self.clock.timer_tick(8);
                 self.program_counter.wrapping_add(2)
               },
               PrefixTarget::B => {
                 self.res(bit, &mut self.registers.b);
+                self.clock.timer_tick(8);
                 self.program_counter.wrapping_add(2)
               },
               PrefixTarget::C => {
                 self.res(bit, &mut self.registers.c);
+                self.clock.timer_tick(8);
                 self.program_counter.wrapping_add(2)
               },
               PrefixTarget::D => {
                 self.res(bit, &mut self.registers.d);
+                self.clock.timer_tick(8);
                 self.program_counter.wrapping_add(2)
               },
               PrefixTarget::E => {
                 self.res(bit, &mut self.registers.e);
+                self.clock.timer_tick(8);
                 self.program_counter.wrapping_add(2)
               },
               PrefixTarget::H => {
                 self.res(bit, &mut self.registers.h);
+                self.clock.timer_tick(8);
                 self.program_counter.wrapping_add(2)
               },
               PrefixTarget::L => {
                 self.res(bit, &mut self.registers.l);
+                self.clock.timer_tick(8);
                 self.program_counter.wrapping_add(2)
               },
               PrefixTarget::HL => {
@@ -634,79 +772,95 @@ impl CPU {
                   self.res(bit, &mut value);
                   // Write the modified value back to memory
                   self.bus.write_byte(address, value);
+                  self.clock.timer_tick(16);
                   self.program_counter.wrapping_add(2)
               }
           }
         },
         Instruction::SET(bit, target) => {
-                match target {
-                    PrefixTarget::A => {
-                      self.set(bit, &mut self.registers.a);
-                      self.program_counter.wrapping_add(2)
-                    },
-                    PrefixTarget::B => {
-                      self.set(bit, &mut self.registers.b);
-                      self.program_counter.wrapping_add(2)
-                    },
-                    PrefixTarget::C => {
-                      self.set(bit, &mut self.registers.c);
-                      self.program_counter.wrapping_add(2)
-                    },
-                    PrefixTarget::D => {
-                      self.set(bit, &mut self.registers.d);
-                      self.program_counter.wrapping_add(2)
-                    },
-                    PrefixTarget::E => {
-                      self.set(bit, &mut self.registers.e);
-                      self.program_counter.wrapping_add(2)
-                    },
-                    PrefixTarget::H => {
-                      self.set(bit, &mut self.registers.h);
-                      self.program_counter.wrapping_add(2)
-                    },
-                    PrefixTarget::L => {
-                      self.set(bit, &mut self.registers.l);
-                      self.program_counter.wrapping_add(2)
-                    },
-                    PrefixTarget::HL => {
-                        // Read the value from memory at the address pointed to by HL
-                        let address = self.registers.get_hl();
-                        let mut value = self.bus.read_byte(address);
-                        self.set(bit, &mut value);
-                        // Write the modified value back to memory
-                        self.bus.write_byte(address, value);
-                        self.program_counter.wrapping_add(2)
-                    }
-                }
+          match target {
+              PrefixTarget::A => {
+                self.set(bit, &mut self.registers.a);
+                self.clock.timer_tick(8);
+                self.program_counter.wrapping_add(2)
+              },
+              PrefixTarget::B => {
+                self.set(bit, &mut self.registers.b);
+                self.clock.timer_tick(8);
+                self.program_counter.wrapping_add(2)
+              },
+              PrefixTarget::C => {
+                self.set(bit, &mut self.registers.c);
+                self.clock.timer_tick(8);
+                self.program_counter.wrapping_add(2)
+              },
+              PrefixTarget::D => {
+                self.set(bit, &mut self.registers.d);
+                self.clock.timer_tick(8);
+                self.program_counter.wrapping_add(2)
+              },
+              PrefixTarget::E => {
+                self.set(bit, &mut self.registers.e);
+                self.clock.timer_tick(8);
+                self.program_counter.wrapping_add(2)
+              },
+              PrefixTarget::H => {
+                self.set(bit, &mut self.registers.h);
+                self.clock.timer_tick(8);
+                self.program_counter.wrapping_add(2)
+              },
+              PrefixTarget::L => {
+                self.set(bit, &mut self.registers.l);
+                self.clock.timer_tick(8);
+                self.program_counter.wrapping_add(2)
+              },
+              PrefixTarget::HL => {
+                  // Read the value from memory at the address pointed to by HL
+                  let address = self.registers.get_hl();
+                  let mut value = self.bus.read_byte(address);
+                  self.set(bit, &mut value);
+                  // Write the modified value back to memory
+                  self.bus.write_byte(address, value);
+                  self.clock.timer_tick(16);
+                  self.program_counter.wrapping_add(2)
+              }
+          }
         },
         Instruction::SRL(target) => {
             match target {
                 PrefixTarget::A => {
                   self.srl(&mut self.registers.a);
+                  self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::B => {
                   self.srl(&mut self.registers.b);
+                  self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::C => {
                   self.srl(&mut self.registers.c);
+                  self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::D => {
                   self.srl(&mut self.registers.d);
+                  self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::E => {
                   self.srl(&mut self.registers.e);
+                  self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::H => {
                   self.srl(&mut self.registers.h);
+                  self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::L => {
                   self.srl(&mut self.registers.l);
+                  self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::HL => {
@@ -716,6 +870,7 @@ impl CPU {
                     self.srl(&mut value);
                     // Write the modified value back to memory
                     self.bus.write_byte(address, value);
+                    self.clock.timer_tick(8);
                     self.program_counter.wrapping_add(2)
                 }
             }
@@ -724,30 +879,37 @@ impl CPU {
             match target {
                 PrefixTarget::A => {
                   self.rr(&mut self.registers.a);
+                  self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::B => {
                   self.rr(&mut self.registers.b);
+                  self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::C => {
                   self.rr(&mut self.registers.c);
+                  self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::D => {
                   self.rr(&mut self.registers.d);
+                  self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::E => {
                   self.rr(&mut self.registers.e);
+                  self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::H => {
                   self.rr(&mut self.registers.h);
+                  self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::L => {
                   self.rr(&mut self.registers.l);
+                  self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::HL => {
@@ -757,6 +919,7 @@ impl CPU {
                     self.rr(&mut value);
                     // Write the modified value back to memory
                     self.bus.write_byte(address, value);
+                    self.clock.timer_tick(8);
                     self.program_counter.wrapping_add(2)
                 }
             }
@@ -765,30 +928,37 @@ impl CPU {
             match target {
                 PrefixTarget::A => {
                   self.rl(&mut self.registers.a);
+                  self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::B => {
                   self.rl(&mut self.registers.b);
+                  self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::C => {
                   self.rl(&mut self.registers.c);
+                  self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::D => {
                   self.rl(&mut self.registers.d);
+                  self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::E => {
                   self.rl(&mut self.registers.e);
+                  self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::H => {
                   self.rl(&mut self.registers.h);
+                  self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::L => {
                   self.rl(&mut self.registers.l);
+                  self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::HL => {
@@ -798,6 +968,7 @@ impl CPU {
                     self.rl(&mut value);
                     // Write the modified value back to memory
                     self.bus.write_byte(address, value);
+                    self.clock.timer_tick(16);
                     self.program_counter.wrapping_add(2)
                 }
             }
@@ -806,30 +977,37 @@ impl CPU {
             match target {
                 PrefixTarget::A => {
                   self.rrc(&mut self.registers.a);
+                  self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::B => {
                   self.rrc(&mut self.registers.b);
+                  self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::C => {
                   self.rrc(&mut self.registers.c);
+                  self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::D => {
                   self.rrc(&mut self.registers.d);
+                  self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::E => {
                   self.rrc(&mut self.registers.e);
+                  self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::H => {
                   self.rrc(&mut self.registers.h);
+                  self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::L => {
                   self.rrc(&mut self.registers.l);
+                  self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::HL => {
@@ -839,6 +1017,7 @@ impl CPU {
                     self.rrc(&mut value);
                     // Write the modified value back to memory
                     self.bus.write_byte(address, value);
+                    self.clock.timer_tick(8);
                     self.program_counter.wrapping_add(2)
                 }
             }
@@ -847,30 +1026,37 @@ impl CPU {
             match target {
                 PrefixTarget::A => {
                   self.rlc(&mut self.registers.a);
+                  self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::B => {
                   self.rlc(&mut self.registers.b);
+                  self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::C => {
                   self.rlc(&mut self.registers.c);
+                  self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::D => {
                   self.rlc(&mut self.registers.d);
+                  self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::E => {
                   self.rlc(&mut self.registers.e);
+                  self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::H => {
                   self.rlc(&mut self.registers.h);
+                  self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::L => {
                   self.rlc(&mut self.registers.l);
+                  self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::HL => {
@@ -880,6 +1066,7 @@ impl CPU {
                     self.rlc(&mut value);
                     // Write the modified value back to memory
                     self.bus.write_byte(address, value);
+                    self.clock.timer_tick(16);
                     self.program_counter.wrapping_add(2)
                 }
             }
@@ -888,30 +1075,37 @@ impl CPU {
             match target {
                 PrefixTarget::A => {
                   self.sra(&mut self.registers.a);
+                  self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::B => {
                   self.sra(&mut self.registers.b);
+                  self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::C => {
                   self.sra(&mut self.registers.c);
+                  self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::D => {
                   self.sra(&mut self.registers.d);
+                  self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::E => {
                   self.sra(&mut self.registers.e);
+                  self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::H => {
                   self.sra(&mut self.registers.h);
+                  self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::L => {
                   self.sra(&mut self.registers.l);
+                  self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::HL => {
@@ -921,6 +1115,7 @@ impl CPU {
                     self.sra(&mut value);
                     // Write the modified value back to memory
                     self.bus.write_byte(address, value);
+                    self.clock.timer_tick(16);
                     self.program_counter.wrapping_add(2)
                 }
             }
@@ -929,30 +1124,37 @@ impl CPU {
             match target {
                 PrefixTarget::A => {
                   self.sla(&mut self.registers.a);
+                  self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::B => {
                   self.sla(&mut self.registers.b);
+                  self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::C => {
                   self.sla(&mut self.registers.c);
+                  self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::D => {
                   self.sla(&mut self.registers.d);
+                  self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::E => {
                   self.sla(&mut self.registers.e);
+                  self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::H => {
                   self.sla(&mut self.registers.h);
+                  self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::L => {
                   self.sla(&mut self.registers.l);
+                  self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::HL => {
@@ -962,6 +1164,7 @@ impl CPU {
                     self.sla(&mut value);
                     // Write the modified value back to memory
                     self.bus.write_byte(address, value);
+                    self.clock.timer_tick(16);
                     self.program_counter.wrapping_add(2)
                 }
             }
@@ -970,30 +1173,37 @@ impl CPU {
             match target {
                 PrefixTarget::A => {
                   self.swap(&mut self.registers.a);
+                  self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::B => {
                   self.swap(&mut self.registers.b);
+                  self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::C => {
                   self.swap(&mut self.registers.c);
+                  self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::D => {
                   self.swap(&mut self.registers.d);
+                  self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::E => {
                   self.swap(&mut self.registers.e);
+                  self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::H => {
                   self.swap(&mut self.registers.h);
+                  self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::L => {
                   self.swap(&mut self.registers.l);
+                  self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::HL => {
@@ -1003,51 +1213,180 @@ impl CPU {
                     self.swap(&mut value);
                     // Write the modified value back to memory
                     self.bus.write_byte(address, value);
+                    self.clock.timer_tick(16);
                     self.program_counter.wrapping_add(2)
                 }
             }
         },
+        //TODO rest of instr
         Instruction::JP(test,target) => {
-            let jump_condition = match test {
-                JumpTest::NotZero => !self.registers.f.zero,
-                JumpTest::NotCarry => !self.registers.f.carry,
-                JumpTest::Zero => self.registers.f.zero,
-                JumpTest::Carry => self.registers.f.carry,
-                JumpTest::Always => true
-            };
-            match target{
-              JumpTarget::A16 => {
-                self.jump(jump_condition,);
-                self.program_counter.wrapping_add(1)
-              },
-              JumpTarget::HL =>{
-                self.jump(jump_condition,);
-                self.program_counter.wrapping_add(1)
-              },
-            }
-            
+          let jump_condition = match test {
+              JumpTest::NotZero => !self.registers.f.zero,
+              JumpTest::NotCarry => !self.registers.f.carry,
+              JumpTest::Zero => self.registers.f.zero,
+              JumpTest::Carry => self.registers.f.carry,
+              JumpTest::Always => true
+          };
+          if jump_condition {
+            self.clock.timer_tick(16);
+          }else {
+            self.clock.timer_tick(12);
+          }
+          match target{
+            JumpTarget::A16 => {
+              self.jump(jump_condition,);
+              self.program_counter.wrapping_add(3)
+            },
+            JumpTarget::HL =>{
+              self.jump(jump_condition,);
+              self.program_counter.wrapping_add(1)
+            },
+          }  
         }
         Instruction::LD(load_type) => {
-            match load_type {
-              LoadType::Byte(target, source) => {
-                let source_value = match source {
-                  LoadByteSource::A => self.registers.a,
-                  LoadByteSource::D8 => self.read_next_byte(),
-                  LoadByteSource::HLI => self.bus.read_byte(self.registers.get_hl()),
-                  _ => { panic!("TODO: implement other sources") }
-                };
-                match target {
-                  LoadByteTarget::A => self.registers.a = source_value,
-                  LoadByteTarget::HLI => self.bus.write_byte(self.registers.get_hl(), source_value),
-                  _ => { panic!("TODO: implement other targets") }
-                };
-                match source {
-                  LoadByteSource::D8  => self.program_counter.wrapping_add(2),
-                  _                   => self.program_counter.wrapping_add(1),
-                }
+          match load_type {
+            LoadType::Byte(target, source) => {
+              let source_value = match source {
+                LoadByteSource::BC =>{
+                  match target{
+                    LoadByteTarget::A=>,
+                    LoadByteTarget::D16=>,
+                    _=>{}
+                  }
+                },
+                LoadByteSource::DE =>{
+                  match target{
+                    LoadByteTarget::A=>,
+                    LoadByteTarget::D16=>,
+                    _=>{}
+                  }
+                },
+                LoadByteSource::HLI =>{
+                  match target{
+                    LoadByteTarget::A=>,
+                    LoadByteTarget::D16=>,
+                    _=>{}
+                  }
+                },
+                LoadByteSource::HLD =>{
+                  match target{
+                    LoadByteTarget::A=>,
+                    LoadByteTarget::D16=>,
+                    _=>{}
+                  }
+                },
+                LoadByteSource::A => {
+                  match target{
+                    LoadByteTarget::BC =>,
+                    LoadByteTarget::DE =>,
+                    LoadByteTarget::HLI =>,
+                    LoadByteTarget::HLD =>,
+                    LoadByteTarget::B =>,
+                    LoadByteTarget::C =>,
+                    LoadByteTarget::D =>,
+                    LoadByteTarget::E =>,
+                    LoadByteTarget::H =>,
+                    LoadByteTarget::L =>,
+                    LoadByteTarget::HL =>,
+                    LoadByteTarget::D8 =>,
+                    LoadByteTarget::A =>,
+                    _ => {}
+                  }
+                },
+                LoadByteSource::B => {
+                  match target{
+                    LoadByteTarget::B =>,
+                    LoadByteTarget::C =>,
+                    LoadByteTarget::D =>,
+                    LoadByteTarget::E =>,
+                    LoadByteTarget::H =>,
+                    LoadByteTarget::L =>,
+                    LoadByteTarget::HL =>,
+                    LoadByteTarget::A =>,
+                    _ => {}
+                  }
+                },
+                LoadByteSource::C => {
+                  match target{
+                    LoadByteTarget::B =>,
+                    LoadByteTarget::C =>,
+                    LoadByteTarget::D =>,
+                    LoadByteTarget::E =>,
+                    LoadByteTarget::H =>,
+                    LoadByteTarget::L =>,
+                    LoadByteTarget::HL =>,
+                    LoadByteTarget::A =>,
+                    _ => {}
+                  }
+                },
+                LoadByteSource::D => {
+                  match target{
+                    LoadByteTarget::B =>,
+                    LoadByteTarget::C =>,
+                    LoadByteTarget::D =>,
+                    LoadByteTarget::E =>,
+                    LoadByteTarget::H =>,
+                    LoadByteTarget::L =>,
+                    LoadByteTarget::HL =>,
+                    LoadByteTarget::A =>,
+                    _ => {}
+                  }
+                },
+                LoadByteSource::E => {
+                  match target{
+                    LoadByteTarget::B =>,
+                    LoadByteTarget::C =>,
+                    LoadByteTarget::D =>,
+                    LoadByteTarget::E =>,
+                    LoadByteTarget::H =>,
+                    LoadByteTarget::L =>,
+                    LoadByteTarget::HL =>,
+                    LoadByteTarget::A =>,
+                    _ => {}
+                  }
+                },
+                LoadByteSource::H=> {
+                  match target{
+                    LoadByteTarget::B =>,
+                    LoadByteTarget::C =>,
+                    LoadByteTarget::D =>,
+                    LoadByteTarget::E =>,
+                    LoadByteTarget::H =>,
+                    LoadByteTarget::L =>,
+                    LoadByteTarget::HL =>,
+                    LoadByteTarget::A =>,
+                    _ => {}
+                  }
+                },
+                LoadByteSource::L => {
+                  match target{
+                    LoadByteTarget::B =>,
+                    LoadByteTarget::C =>,
+                    LoadByteTarget::D =>,
+                    LoadByteTarget::E =>,
+                    LoadByteTarget::H =>,
+                    LoadByteTarget::L =>,
+                    LoadByteTarget::HL =>,
+                    LoadByteTarget::A =>,
+                    _ => {}
+                  }
+                }  
+                LoadByteSource::D8 => self.read_next_byte(),
+                LoadByteSource::HLI => self.bus.read_byte(self.registers.get_hl()),
+                _ => { panic!("TODO: implement other sources") }
+              };
+              match target {
+                LoadByteTarget::A => self.registers.a = source_value,
+                LoadByteTarget::HLI => self.bus.write_byte(self.registers.get_hl(), source_value),
+                _ => { panic!("TODO: implement other targets") }
+              };
+              match source {
+                LoadByteSource::D8  => self.program_counter.wrapping_add(2),
+                _                   => self.program_counter.wrapping_add(1),
               }
-              _ => { panic!("TODO: implement other load types") }
             }
+            _ => { panic!("TODO: implement other load types") }
+          }
         }
         Instruction::PUSH(target) => {
             let value = match target {
@@ -1058,6 +1397,7 @@ impl CPU {
               _ => { panic!("Err: ") }
             };
             self.push(value);
+            self.clock.timer_tick(16);
             self.program_counter.wrapping_add(1)
         }
         Instruction::POP(target) => {
@@ -1069,6 +1409,7 @@ impl CPU {
                 StackTarget::AF => self.registers.set_af(result),
                 _ => { panic!("Err:") }
             };
+            self.clock.timer_tick(16);
             self.program_counter.wrapping_add(1)
         }
         Instruction::CALL(test) => {
@@ -1076,18 +1417,38 @@ impl CPU {
                 JumpTest::NotZero => !self.registers.f.zero,
                 _ => { panic!("TODO: support more conditions") }
             };
+            if jump_condition {
+              self.clock.timer_tick(24);
+            }else{
+              self.clock.timer_tick(12);
+            }
             self.call(jump_condition)
         }
         Instruction::RET(test) => {
             let jump_condition = match test {
-                JumpTest::NotZero => !self.registers.f.zero,
-                _ => { panic!("TODO: support more conditions") }
+              JumpTest::NotZero => !self.registers.f.zero,
+              JumpTest::NotCarry => !self.registers.f.carry,
+              JumpTest::Zero => self.registers.f.zero,
+              JumpTest::Carry => self.registers.f.carry,
+              JumpTest::Always => true,
+              _ => { panic!("Err: ") }
             };
+            if jump_condition {
+              self.clock.timer_tick(20);
+            }else {
+              self.clock.timer_tick(8); 
+            }
             self.return_(jump_condition)
         }
         Instruction::NOP() => {
+          self.clock.timer_tick(4);
           self.program_counter.wrapping_add(1)
-        }  
+        } 
+        Instruction::HALT()  => {
+          self.is_halted = true;
+          self.clock.timer_tick(4);
+          self.program_counter.wrapping_add(1)
+        }
         _ => { /* TODO: support more instructions */ self.program_counter}
         }
     }

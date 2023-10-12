@@ -93,7 +93,7 @@ pub enum StackTarget{
 }
 
 pub enum LoadByteTarget{
-    A, B, C, D, E, H, L, HLI, HLD, BC, A16, DE, HL, SP, FF00C, A8
+    A, B, C, D, E, H, L, HLI, HLD, BC, A16, DE, HL, SP, FF00C, A8, D8,D16
 }
 
 pub enum LoadByteSource{
