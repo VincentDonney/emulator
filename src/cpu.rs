@@ -1742,7 +1742,11 @@ impl CPU {
         }
         Instruction::CALL(test) => {
             let jump_condition = match test {
-                JumpTest::NotZero => !self.registers.f.zero,
+              JumpTest::NotZero => !self.registers.f.zero,
+              JumpTest::NotCarry => !self.registers.f.carry,
+              JumpTest::Zero => self.registers.f.zero,
+              JumpTest::Carry => self.registers.f.carry,
+              JumpTest::Always => true,
                 _ => { panic!("TODO: support more conditions") }
             };
             if jump_condition {
@@ -1777,8 +1781,62 @@ impl CPU {
           self.clock.timer_tick(4);
           self.program_counter.wrapping_add(1)
         }
+        Instruction::RST(restart) => {
+          match restart{
+            RestartTarget::H00 =>{
+              self.push(self.program_counter);
+              self.program_counter = 0x0000;
+              self.clock.timer_tick(16);
+              self.program_counter.wrapping_add(1)
+            },
+            RestartTarget::H08 => {
+              self.push(self.program_counter);
+              self.program_counter = 0x0008;
+              self.clock.timer_tick(16);
+              self.program_counter.wrapping_add(1)
+            },
+            RestartTarget::H10 => {
+              self.push(self.program_counter);
+              self.program_counter = 0x0010;
+              self.clock.timer_tick(16);
+              self.program_counter.wrapping_add(1)
+            },
+            RestartTarget::H18 => {
+              self.push(self.program_counter);
+              self.program_counter = 0x0018;
+              self.clock.timer_tick(16);
+              self.program_counter.wrapping_add(1)
+            },
+            RestartTarget::H20 =>{
+              self.push(self.program_counter);
+              self.program_counter = 0x0020;
+              self.clock.timer_tick(16);
+              self.program_counter.wrapping_add(1)
+            },
+            RestartTarget::H28 => {
+              self.push(self.program_counter);
+              self.program_counter = 0x0028;
+              self.clock.timer_tick(16);
+              self.program_counter.wrapping_add(1)
+            },
+            RestartTarget::H30 => {
+              self.push(self.program_counter);
+              self.program_counter = 0x0030;
+              self.clock.timer_tick(16);
+              self.program_counter.wrapping_add(1)
+            }
+            RestartTarget::H38 => {
+              self.push(self.program_counter);
+              self.program_counter = 0x0038;
+              self.clock.timer_tick(16);
+              self.program_counter.wrapping_add(1)
+            },
+            _ =>{self.program_counter.wrapping_add(1)}
+          }
+        }
         _ => { /* TODO: support more instructions */ self.program_counter}
         }
+        
     }
   fn push(&mut self, val:u16){
     self.stack_pointer = self.stack_pointer.wrapping_sub(1);
