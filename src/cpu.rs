@@ -54,6 +54,7 @@ impl CPU {
     let prefixed = instruction_byte == 0xCB;
     if prefixed {
       instruction_byte = self.bus.read_byte(self.program_counter + 1);
+      self.clock.timer_tick(4);
     }
 
     let next_pc = if let Some(instruction) = Instruction::from_byte(instruction_byte,prefixed) {
@@ -1479,6 +1480,9 @@ impl CPU {
           self.ime = false;
           self.clock.timer_tick(4);
           self.program_counter.overflowing_add(1);
+        }
+        Instruction::PREFIX() => {
+          //Should never be read
         }
 
     }
