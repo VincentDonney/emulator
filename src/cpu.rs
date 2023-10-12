@@ -10,7 +10,10 @@ struct CPU{
     stack_pointer:u16,
     clock:timer::TimerContext,
     bus:MemoryBus,
-    is_halted:bool
+    is_halted:bool,
+    ime:bool,
+    ie:u8,
+    if_reg:u8,
 }
 struct MemoryBus{
     mem: [u8;0xFFFF]
@@ -23,6 +26,17 @@ impl MemoryBus {
   fn write_byte(&self, address : u16, byte:u8){
 
   }
+}
+
+enum EmulatorError {
+  InvalidOpcode,
+  MemoryReadError,
+  MemoryWriteError,
+  StackOverflow,
+  StackUnderflow,
+  InvalidAddress,
+  InterruptHandlingError,
+  // Add more error variants as needed
 }
 
 impl CPU {
@@ -1444,13 +1458,29 @@ impl CPU {
           self.clock.timer_tick(4);
           self.program_counter.wrapping_add(1)
         } 
-        Instruction::HALT()  => {
+        Instruction::HALT() => {
           self.is_halted = true;
           self.clock.timer_tick(4);
           self.program_counter.wrapping_add(1)
         }
-        _ => { /* TODO: support more instructions */ self.program_counter}
+        Instruction::RETI() => {
+          self.return_(true);
+          self.ime = true;
+          self.clock.timer_tick(16);
+          self.program_counter.overflowing_add(1);
+
         }
+        Instruction::EI() => {
+          self.ime = true;
+          self.clock.timer_tick(4);
+          self.program_counter.overflowing_add(1);
+        }
+        Instruction:DI() => {
+          self.ime = false;
+          self.clock.timer_tick(4);
+          self.program_counter.overflowing_add(1);
+        }
+
     }
   fn push(&mut self, val:u16){
     self.stack_pointer = self.stack_pointer.wrapping_sub(1);
@@ -1816,5 +1846,41 @@ impl CPU {
     } else {
         self.registers.f &= !0b0001; // Clear the carry flag
     }
+  }
+
+  fn handle_interrupts(&mut self) -> Result<(), EmulatorError> {
+    if self.ime {
+        let interrupt_flags = self.ie & self.if_reg;
+        if interrupt_flags != 0 {
+            self.ime = false; // Disable further interrupts
+
+            if interrupt_flags & 0b00001 != 0 {
+                self.handle_interrupt(0x0040)?; // V-Blank interrupt
+            } else if interrupt_flags & 0b00010 != 0 {
+                self.handle_interrupt(0x0048)?; // LCD STAT interrupt
+            } else if interrupt_flags & 0b00100 != 0 {
+                self.handle_interrupt(0x0050)?; // Timer interrupt
+            } else if interrupt_flags & 0b01000 != 0 {
+                self.handle_interrupt(0x0058)?; // Serial interrupt
+            } else if interrupt_flags & 0b10000 != 0 {
+                self.handle_interrupt(0x0060)?; // Joypad interrupt
+            }
+        }
+    }
+    Ok(())
+}
+
+fn handle_interrupt(&mut self, addr: u16) -> Result<(), EmulatorError> {
+    // Push the return address onto the stack
+    let pc = self.program_counter;
+    self.push_stack(pc)?;
+
+    // Disable further interrupts while servicing the current one
+    self.ime = false;
+
+    // Jump to the interrupt handler
+    self.program_counter = addr;
+
+    Ok(())
   }
 }
