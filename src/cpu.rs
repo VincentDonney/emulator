@@ -24,7 +24,7 @@ impl MemoryBus {
     self.mem[address as usize]
   }
   fn write_byte(&self, address : u16, byte:u8){
-
+    self.mem[address as usize] = byte; 
   }
 }
 
@@ -99,7 +99,7 @@ impl CPU {
               self.program_counter.wrapping_add(1)
             }
             ArithmeticTarget::H => {
-              let value = self.registers.c;
+              let value = self.registers.h;
               let new_value = self.add(value);
               self.registers.a = new_value;
               self.clock.timer_tick(4);
@@ -113,22 +113,29 @@ impl CPU {
               self.program_counter.wrapping_add(1)
             }
             ArithmeticTarget::HL => {
-              //TODO
+              let address = self.registers.get_hl();
+              let value = self.bus.read_byte(address);
+              let new_value = self.add(value);
+              self.registers.a = new_value;
               self.clock.timer_tick(8);
               self.program_counter.wrapping_add(1)
             }
             ArithmeticTarget::D8 => {
-              //TODO
+              let immediate_value = self.read_next_byte();
+              let new_value = self.add(immediate_value);
+              self.registers.a = new_value;
               self.clock.timer_tick(8);
               self.program_counter.wrapping_add(2)
             }
             ArithmeticTarget::A => {
-              //TODO
+              let value = self.registers.a;
+              let new_value = self.add(value);
+              self.registers.a = new_value;
               self.clock.timer_tick(8);
               self.program_counter.wrapping_add(1)
             }
             ArithmeticTarget::SP => {
-              //TODO
+              self.push(add_sp());
               self.clock.timer_tick(8);
               self.program_counter.wrapping_add(1)
             }
@@ -194,12 +201,19 @@ impl CPU {
               self.program_counter.wrapping_add(1)
             }
             ArithmeticTarget::HL => {
-              //TODO
+              let address = self.registers.get_hl();
+              let value = self.bus.read_byte(address);
+              let (new_value, did_overflow) = self.sub(value);
+              self.registers.a = new_value;
+              self.update_flags(new_value, did_overflow);
               self.clock.timer_tick(8);
               self.program_counter.wrapping_add(1)
             }
             ArithmeticTarget::D8 => {
-              //TODO
+              let immediate_value = self.read_next_byte();
+              let (new_value, did_overflow) = self.sub(immediate_value);
+              self.registers.a = new_value;
+              self.update_flags(new_value, did_overflow);
               self.clock.timer_tick(8);
               self.program_counter.wrapping_add(2)
             }
@@ -258,7 +272,8 @@ impl CPU {
               self.program_counter.wrapping_add(1)
             }
             ArithmeticTarget::D8 => {
-              //TODO
+              let immediate_value = self.read_next_byte();
+              self.and(immediate_value);
               self.clock.timer_tick(8);
               self.program_counter.wrapping_add(2)
             }
@@ -311,7 +326,8 @@ impl CPU {
                 self.program_counter.wrapping_add(1)
             }
             ArithmeticTarget::D8 =>{
-              //TODO
+              let immediate_value = self.read_next_byte();
+              self.sbc(&mut immediate_value);
               self.clock.timer_tick(8);
               self.program_counter.wrapping_add(2)
             },
@@ -364,7 +380,8 @@ impl CPU {
                 self.program_counter.wrapping_add(1)
             }
             ArithmeticTarget::D8 => {
-              //TODO
+              let immediate_value = self.read_next_byte();
+              self.or(&mut immediate_value);
               self.clock.timer_tick(4);
               self.program_counter.wrapping_add(2)
             },
@@ -417,7 +434,8 @@ impl CPU {
                 self.program_counter.wrapping_add(1)
             }
             ArithmeticTarget::D8 => {
-              //TODO
+              let immediate_value = self.read_next_byte();
+              self.xor(&mut immediate_value);
               self.clock.timer_tick(8);
               self.program_counter.wrapping_add(2)
             },
@@ -470,7 +488,8 @@ impl CPU {
                 self.program_counter.wrapping_add(1)
             }
             ArithmeticTarget::D8 => {
-              //TODO
+              let immediate_value = self.read_next_byte();
+              self.cp(&mut immediate_value);
               self.clock.timer_tick(8);
               self.program_counter.wrapping_add(2)
             },
@@ -525,12 +544,16 @@ impl CPU {
                 self.program_counter.wrapping_add(1)
             }
             IncDecTarget::BC =>{
-              //TODO
+              let value = self.registers.get_bc();
+              let new_value = value.wrapping_add(1);
+              self.registers.set_bc(new_value);
               self.clock.timer_tick(8);
               self.program_counter.wrapping_add(1)
             }
             IncDecTarget::DE =>{
-              //TODO
+              let value = self.registers.get_de();
+              let new_value = value.wrapping_add(1);
+              self.registers.set_de(new_value);
               self.clock.timer_tick(8);
               self.program_counter.wrapping_add(1)
             }
@@ -590,12 +613,16 @@ impl CPU {
                 self.program_counter.wrapping_add(1)
             }
             IncDecTarget::BC =>{
-              //TODO
+              let value = self.registers.get_bc();
+              let new_value = value.wrapping_sub(1);
+              self.registers.set_bc(new_value);
               self.clock.timer_tick(8);
               self.program_counter.wrapping_add(1)
             }
             IncDecTarget::DE =>{
-              //TODO
+              let value = self.registers.get_de();
+              let new_value = value.wrapping_sub(1);
+              self.registers.set_de(new_value);
               self.clock.timer_tick(8);
               self.program_counter.wrapping_add(1)
             }
@@ -674,16 +701,16 @@ impl CPU {
               self.program_counter.wrapping_add(1)
             },
             ArithmeticTarget::HL => {
-              //TODO
+              self.adc(self.bus.read_byte(self.registers.get_hl()));
               self.clock.timer_tick(8);
               self.program_counter.wrapping_add(2)
             },
             ArithmeticTarget::D8 => {
-              //TODO
+              let immediate = self.read_next_byte();
+              self.adc(immediate);
               self.clock.timer_tick(8);
               self.program_counter.wrapping_add(2)
             },
-
             _ =>{self.program_counter.wrapping_add(1)}
           }
         },
@@ -1235,7 +1262,6 @@ impl CPU {
                 }
             }
         },
-        //TODO rest of instr
         Instruction::JP(test,target) => {
           let jump_condition = match test {
               JumpTest::NotZero => !self.registers.f.zero,
@@ -1787,6 +1813,16 @@ impl CPU {
             }
             self.return_(jump_condition)
         }
+        Instruction::JR(offset) => {
+          // Calculate the new program counter value by adding the signed offset.
+          let new_program_counter = (self.program_counter as i32 + offset as i32) as u16;
+          self.clock.timer_tick(4);
+          new_program_counter
+        }
+        Instruction::STOP() => {
+          self.clock.timer_tick(4);
+          self.program_counter.wrapping_add(2)
+        }
         Instruction::NOP() => {
           self.clock.timer_tick(4);
           self.program_counter.wrapping_add(1)
@@ -1800,21 +1836,22 @@ impl CPU {
           self.return_(true);
           self.ime = true;
           self.clock.timer_tick(16);
-          self.program_counter.overflowing_add(1);
+          self.program_counter.wrapping_add(1)
 
         }
         Instruction::EI() => {
           self.ime = true;
           self.clock.timer_tick(4);
-          self.program_counter.overflowing_add(1);
+          self.program_counter.wrapping_add(1)
         }
-        Instruction:DI() => {
+        Instruction::DI() => {
           self.ime = false;
           self.clock.timer_tick(4);
-          self.program_counter.overflowing_add(1);
+          self.program_counter.wrapping_add(1)
         }
         Instruction::PREFIX() => {
-          //Should never be read
+          self.clock.timer_tick(4);
+          self.program_counter.wrapping_add(1)
         }
         Instruction::RST(restart) => {
           match restart{
@@ -1880,7 +1917,7 @@ impl CPU {
         
   }
 
-  fn pop(&mut self) -> u16 {
+  fn pop(&mut self)->u16{
     let lsb = self.bus.read_byte(self.stack_pointer) as u16;
     self.stack_pointer = self.stack_pointer.wrapping_add(1);
     
@@ -2276,7 +2313,7 @@ impl CPU {
 fn handle_interrupt(&mut self, addr: u16) -> Result<(), EmulatorError> {
     // Push the return address onto the stack
     let pc = self.program_counter;
-    self.push_stack(pc)?;
+    self.push(pc)?;
 
     // Disable further interrupts while servicing the current one
     self.ime = false;

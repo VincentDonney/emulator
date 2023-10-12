@@ -34,7 +34,6 @@ pub enum Instruction {
 
     // Load Instructions
     LD(LoadType),
-    LDH(LoadType),
 
     // Stack Instructions
     PUSH(StackTarget),
@@ -668,7 +667,7 @@ impl Instruction{
             0xDE => Some(Instruction::SBC(ArithmeticTarget::D8)),
             0xDF => Some(Instruction::RST(RestartTarget::H18)),
 
-            0xE0 => Some(Instruction::LDH(LoadType::Byte(LoadByteTarget::A8, LoadByteSource::A))),
+            0xE0 => Some(Instruction::LD(LoadType::Byte(LoadByteTarget::A8, LoadByteSource::A))),
             0xE1 => Some(Instruction::POP(StackTarget::HL)),
             0xE2 => Some(Instruction::LD(LoadType::Byte(LoadByteTarget::FF00C, LoadByteSource::A))),
             0xE3 => /* INVALID */ None,
@@ -686,7 +685,7 @@ impl Instruction{
             0xEE => Some(Instruction::XOR(ArithmeticTarget::D8)),
             0xEF => Some(Instruction::RST(RestartTarget::H28)),
 
-            0xF0 => Some(Instruction::LDH(LoadType::Byte(LoadByteTarget::A, LoadByteSource::A8))),
+            0xF0 => Some(Instruction::LD(LoadType::Byte(LoadByteTarget::A, LoadByteSource::A8))),
             0xF1 => Some(Instruction::POP(StackTarget::AF)),
             0xF2 => Some(Instruction::LD(LoadType::Byte(LoadByteTarget::A, LoadByteSource::FF00C))),
             0xF3 => Some(Instruction::DI()),
