@@ -236,7 +236,9 @@ impl CPU {
               self.program_counter.wrapping_add(1)
             }
             ArithmeticTarget::HL => {
-              //TODO
+              let address = self.registers.get_hl();
+              let value = self.bus.read_byte(address);
+              self.and_hl(value);
               self.clock.timer_tick(8);
               self.program_counter.wrapping_add(1)
             }
@@ -1246,148 +1248,474 @@ impl CPU {
         Instruction::LD(load_type) => {
           match load_type {
             LoadType::Byte(target, source) => {
-              let source_value = match source {
-                LoadByteSource::BC =>{
-                  match target{
-                    LoadByteTarget::A=>,
-                    LoadByteTarget::D16=>,
-                    _=>{}
-                  }
-                },
-                LoadByteSource::DE =>{
-                  match target{
-                    LoadByteTarget::A=>,
-                    LoadByteTarget::D16=>,
-                    _=>{}
-                  }
-                },
-                LoadByteSource::HLI =>{
-                  match target{
-                    LoadByteTarget::A=>,
-                    LoadByteTarget::D16=>,
-                    _=>{}
-                  }
-                },
-                LoadByteSource::HLD =>{
-                  match target{
-                    LoadByteTarget::A=>,
-                    LoadByteTarget::D16=>,
-                    _=>{}
-                  }
-                },
-                LoadByteSource::A => {
-                  match target{
-                    LoadByteTarget::BC =>,
-                    LoadByteTarget::DE =>,
-                    LoadByteTarget::HLI =>,
-                    LoadByteTarget::HLD =>,
-                    LoadByteTarget::B =>,
-                    LoadByteTarget::C =>,
-                    LoadByteTarget::D =>,
-                    LoadByteTarget::E =>,
-                    LoadByteTarget::H =>,
-                    LoadByteTarget::L =>,
-                    LoadByteTarget::HL =>,
-                    LoadByteTarget::D8 =>,
-                    LoadByteTarget::A =>,
-                    _ => {}
-                  }
-                },
-                LoadByteSource::B => {
-                  match target{
-                    LoadByteTarget::B =>,
-                    LoadByteTarget::C =>,
-                    LoadByteTarget::D =>,
-                    LoadByteTarget::E =>,
-                    LoadByteTarget::H =>,
-                    LoadByteTarget::L =>,
-                    LoadByteTarget::HL =>,
-                    LoadByteTarget::A =>,
-                    _ => {}
-                  }
-                },
-                LoadByteSource::C => {
-                  match target{
-                    LoadByteTarget::B =>,
-                    LoadByteTarget::C =>,
-                    LoadByteTarget::D =>,
-                    LoadByteTarget::E =>,
-                    LoadByteTarget::H =>,
-                    LoadByteTarget::L =>,
-                    LoadByteTarget::HL =>,
-                    LoadByteTarget::A =>,
-                    _ => {}
-                  }
-                },
-                LoadByteSource::D => {
-                  match target{
-                    LoadByteTarget::B =>,
-                    LoadByteTarget::C =>,
-                    LoadByteTarget::D =>,
-                    LoadByteTarget::E =>,
-                    LoadByteTarget::H =>,
-                    LoadByteTarget::L =>,
-                    LoadByteTarget::HL =>,
-                    LoadByteTarget::A =>,
-                    _ => {}
-                  }
-                },
-                LoadByteSource::E => {
-                  match target{
-                    LoadByteTarget::B =>,
-                    LoadByteTarget::C =>,
-                    LoadByteTarget::D =>,
-                    LoadByteTarget::E =>,
-                    LoadByteTarget::H =>,
-                    LoadByteTarget::L =>,
-                    LoadByteTarget::HL =>,
-                    LoadByteTarget::A =>,
-                    _ => {}
-                  }
-                },
-                LoadByteSource::H=> {
-                  match target{
-                    LoadByteTarget::B =>,
-                    LoadByteTarget::C =>,
-                    LoadByteTarget::D =>,
-                    LoadByteTarget::E =>,
-                    LoadByteTarget::H =>,
-                    LoadByteTarget::L =>,
-                    LoadByteTarget::HL =>,
-                    LoadByteTarget::A =>,
-                    _ => {}
-                  }
-                },
-                LoadByteSource::L => {
-                  match target{
-                    LoadByteTarget::B =>,
-                    LoadByteTarget::C =>,
-                    LoadByteTarget::D =>,
-                    LoadByteTarget::E =>,
-                    LoadByteTarget::H =>,
-                    LoadByteTarget::L =>,
-                    LoadByteTarget::HL =>,
-                    LoadByteTarget::A =>,
-                    _ => {}
-                  }
-                }  
-                LoadByteSource::D8 => self.read_next_byte(),
-                LoadByteSource::HLI => self.bus.read_byte(self.registers.get_hl()),
-                _ => { panic!("TODO: implement other sources") }
-              };
               match target {
-                LoadByteTarget::A => self.registers.a = source_value,
-                LoadByteTarget::HLI => self.bus.write_byte(self.registers.get_hl(), source_value),
-                _ => { panic!("TODO: implement other targets") }
-              };
-              match source {
-                LoadByteSource::D8  => self.program_counter.wrapping_add(2),
-                _                   => self.program_counter.wrapping_add(1),
-              }
+                LoadByteTarget::BC =>{
+                  match source{
+                    LoadByteSource::A=>{
+                      self.bus.write_byte(self.registers.get_bc(), self.registers.a);
+                      self.clock.timer_tick(8);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    LoadByteSource::D16=>{
+                      self.registers.set_bc(self.read_next_word());
+                      self.clock.timer_tick(12);
+                      self.program_counter.wrapping_add(3)
+                    },
+                    _=>{self.program_counter.wrapping_add(1)}
+                  }
+                },
+                LoadByteTarget::DE =>{
+                  match source{
+                    LoadByteSource::A=>{
+                      self.bus.write_byte(self.registers.get_de(), self.registers.a);
+                      self.clock.timer_tick(8);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    LoadByteSource::D16=>{
+                      self.registers.set_de(self.read_next_word());
+                      self.clock.timer_tick(12);
+                      self.program_counter.wrapping_add(3)
+                    },
+                    _=>{self.program_counter.wrapping_add(1)}
+                  }
+                },
+                LoadByteTarget::HL =>{
+                  match source{
+                    LoadByteSource::A=>{
+                      self.bus.write_byte(self.registers.get_hl(), self.registers.a);
+                      self.clock.timer_tick(8);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    LoadByteSource::D16=>{
+                      self.registers.set_hl(self.read_next_word());
+                      self.clock.timer_tick(12);
+                      self.program_counter.wrapping_add(3)
+                    },
+                    LoadByteSource::SP=>{
+                      let r8 = self.read_next_byte() as i8 as i16;
+                      let sp = self.pop() as i16;
+                      self.registers.set_hl(sp.wrapping_add(r8) as u16);
+                      self.clock.timer_tick(12);
+                      self.program_counter.wrapping_add(2)
+                    }
+                    _=>{self.program_counter.wrapping_add(1)}
+                  }
+                },
+                LoadByteTarget::SP => {
+                  match source{
+                    LoadByteSource::D16=>{
+                      self.push(self.read_next_word());
+                      self.clock.timer_tick(8);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    LoadByteSource::HL=>{
+                      self.push(self.registers.get_hl());
+                      self.clock.timer_tick(12);
+                      self.program_counter.wrapping_add(3)
+                    },
+                    _=>{self.program_counter.wrapping_add(1)}
+                  }
+                },
+                LoadByteTarget::HLI => {
+                  self.bus.write_byte(self.registers.get_hl(), self.registers.a);
+                  self.registers.set_hl(self.registers.get_hl().wrapping_add(1));
+                  self.clock.timer_tick(8);
+                  self.program_counter.wrapping_add(1)
+                },
+                LoadByteTarget::HLD =>{
+                  self.bus.write_byte(self.registers.get_hl(), self.registers.a);
+                  self.registers.set_hl(self.registers.get_hl().wrapping_sub(1));
+                  self.clock.timer_tick(8);
+                  self.program_counter.wrapping_add(1)
+                },
+                LoadByteTarget::A => {
+                  match source{
+                    LoadByteSource::BC =>{
+                      self.registers.a = self.bus.read_byte(self.registers.get_bc());
+                      self.clock.timer_tick(8);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    LoadByteSource::DE =>{
+                      self.registers.a = self.bus.read_byte(self.registers.get_de());
+                      self.clock.timer_tick(8);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    LoadByteSource::HLI =>{
+                      self.registers.a = self.bus.read_byte(self.registers.get_hl());
+                      self.registers.set_hl(self.registers.get_hl().wrapping_add(1));
+                      self.clock.timer_tick(8);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    LoadByteSource::HLD =>{
+                      self.registers.a = self.bus.read_byte(self.registers.get_hl());
+                      self.registers.set_hl(self.registers.get_hl().wrapping_sub(1));
+                      self.clock.timer_tick(8);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    LoadByteSource::B =>{
+                      self.registers.a = self.registers.b;
+                      self.clock.timer_tick(4);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    LoadByteSource::C =>{
+                      self.registers.a = self.registers.c;
+                      self.clock.timer_tick(4);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    LoadByteSource::D =>{
+                      self.registers.a = self.registers.d;
+                      self.clock.timer_tick(4);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    LoadByteSource::E =>{
+                      self.registers.a = self.registers.e;
+                      self.clock.timer_tick(4);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    LoadByteSource::H =>{
+                      self.registers.a = self.registers.h;
+                      self.clock.timer_tick(4);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    LoadByteSource::L =>{
+                      self.registers.a = self.registers.l;
+                      self.clock.timer_tick(4);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    LoadByteSource::HL =>{
+                      self.registers.a = self.bus.read_byte(self.registers.get_hl());
+                      self.clock.timer_tick(8);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    LoadByteSource::D8 =>{
+                      self.registers.a = self.read_next_byte();
+                      self.clock.timer_tick(8);
+                      self.program_counter.wrapping_add(2)
+                    },
+                    LoadByteSource::A =>{
+                      self.registers.a = self.registers.a;
+                      self.clock.timer_tick(4);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    LoadByteSource::A8 =>{
+                      self.registers.a = self.bus.read_byte(self.read_next_byte() as u16);
+                      self.clock.timer_tick(12);
+                      self.program_counter.wrapping_add(2)
+                    },
+                    LoadByteSource::A16 =>{
+                      self.registers.a = self.bus.read_byte(self.read_next_word());
+                      self.clock.timer_tick(16);
+                      self.program_counter.wrapping_add(3)
+                    },
+                    LoadByteSource::FF00C =>{
+                      self.registers.a = self.bus.read_byte(self.registers.c as u16);
+                      self.clock.timer_tick(8);
+                      self.program_counter.wrapping_add(2)
+                    },
+                    _ => {self.program_counter.wrapping_add(1)}
+                  }
+                },
+                LoadByteTarget::B => {
+                  match source{
+                    LoadByteSource::B =>{
+                      self.registers.b = self.registers.b;
+                      self.clock.timer_tick(4);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    LoadByteSource::C =>{
+                      self.registers.b = self.registers.c;
+                      self.clock.timer_tick(4);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    LoadByteSource::D =>{
+                      self.registers.b = self.registers.c;
+                      self.clock.timer_tick(4);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    LoadByteSource::E =>{
+                      self.registers.b = self.registers.e;
+                      self.clock.timer_tick(4);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    LoadByteSource::H =>{
+                      self.registers.b = self.registers.e;
+                      self.clock.timer_tick(4);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    LoadByteSource::L =>{
+                      self.registers.b = self.registers.l;
+                      self.clock.timer_tick(4);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    LoadByteSource::HL =>{
+                      self.registers.b = self.bus.read_byte(self.registers.get_hl());
+                      self.clock.timer_tick(8);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    LoadByteSource::A =>{
+                      self.registers.b = self.registers.a;
+                      self.clock.timer_tick(4);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    _ => {self.program_counter.wrapping_add(1)}
+                  }
+                },
+                LoadByteTarget::C => {
+                  match source{
+                    LoadByteSource::B =>{
+                      self.registers.c = self.registers.b;
+                      self.clock.timer_tick(4);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    LoadByteSource::C =>{
+                      self.registers.c = self.registers.c;
+                      self.clock.timer_tick(4);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    LoadByteSource::D =>{
+                      self.registers.c = self.registers.d;
+                      self.clock.timer_tick(4);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    LoadByteSource::E =>{
+                      self.registers.c = self.registers.e;
+                      self.clock.timer_tick(4);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    LoadByteSource::H =>{
+                      self.registers.c = self.registers.h;
+                      self.clock.timer_tick(4);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    LoadByteSource::L =>{
+                      self.registers.c = self.registers.l;
+                      self.clock.timer_tick(4);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    LoadByteSource::HL =>{
+                      self.registers.b = self.bus.read_byte(self.registers.get_hl());
+                      self.clock.timer_tick(8);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    LoadByteSource::A =>{
+                      self.registers.c = self.registers.a;
+                      self.clock.timer_tick(4);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    _ => {self.program_counter.wrapping_add(1)}
+                  }
+                },
+                LoadByteTarget::D => {
+                  match source{
+                    LoadByteSource::B =>{
+                      self.registers.d = self.registers.b;
+                      self.clock.timer_tick(4);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    LoadByteSource::C =>{
+                      self.registers.d = self.registers.c;
+                      self.clock.timer_tick(4);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    LoadByteSource::D =>{
+                      self.registers.d = self.registers.d;
+                      self.clock.timer_tick(4);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    LoadByteSource::E =>{
+                      self.registers.d = self.registers.e;
+                      self.clock.timer_tick(4);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    LoadByteSource::H =>{
+                      self.registers.d = self.registers.h;
+                      self.clock.timer_tick(4);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    LoadByteSource::L =>{
+                      self.registers.d = self.registers.l;
+                      self.clock.timer_tick(4);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    LoadByteSource::HL =>{
+                      self.registers.b = self.bus.read_byte(self.registers.get_hl());
+                      self.clock.timer_tick(8);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    LoadByteSource::A =>{
+                      self.registers.d = self.registers.a;
+                      self.clock.timer_tick(4);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    _ => {self.program_counter.wrapping_add(1)}
+                  }
+                },
+                LoadByteTarget::E => {
+                  match source{
+                    LoadByteSource::B =>{
+                      self.registers.e = self.registers.b;
+                      self.clock.timer_tick(4);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    LoadByteSource::C =>{
+                      self.registers.e = self.registers.c;
+                      self.clock.timer_tick(4);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    LoadByteSource::D =>{
+                      self.registers.e = self.registers.d;
+                      self.clock.timer_tick(4);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    LoadByteSource::E =>{
+                      self.registers.e = self.registers.e;
+                      self.clock.timer_tick(4);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    LoadByteSource::H =>{
+                      self.registers.e = self.registers.h;
+                      self.clock.timer_tick(4);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    LoadByteSource::L =>{
+                      self.registers.e = self.registers.l;
+                      self.clock.timer_tick(4);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    LoadByteSource::HL =>{
+                      self.registers.b = self.bus.read_byte(self.registers.get_hl());
+                      self.clock.timer_tick(8);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    LoadByteSource::A =>{
+                      self.registers.e = self.registers.a;
+                      self.clock.timer_tick(4);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    _ => {self.program_counter.wrapping_add(1)}
+                  }
+                },
+                LoadByteTarget::H=> {
+                  match source{
+                    LoadByteSource::B =>{
+                      self.registers.h = self.registers.b;
+                      self.clock.timer_tick(4);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    LoadByteSource::C =>{
+                      self.registers.h = self.registers.c;
+                      self.clock.timer_tick(4);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    LoadByteSource::D =>{
+                      self.registers.h = self.registers.d;
+                      self.clock.timer_tick(4);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    LoadByteSource::E =>{
+                      self.registers.h = self.registers.e;
+                      self.clock.timer_tick(4);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    LoadByteSource::H =>{
+                      self.registers.h = self.registers.h;
+                      self.clock.timer_tick(4);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    LoadByteSource::L =>{
+                      self.registers.h = self.registers.l;
+                      self.clock.timer_tick(4);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    LoadByteSource::HL =>{
+                      self.registers.b = self.bus.read_byte(self.registers.get_hl());
+                      self.clock.timer_tick(8);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    LoadByteSource::A =>{
+                      self.registers.h = self.registers.a;
+                      self.clock.timer_tick(4);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    _ => {self.program_counter.wrapping_add(1)}
+                  }
+                },
+                LoadByteTarget::L => {
+                  match source{
+                    LoadByteSource::B =>{
+                      self.registers.l = self.registers.b;
+                      self.clock.timer_tick(4);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    LoadByteSource::C =>{
+                      self.registers.l = self.registers.c;
+                      self.clock.timer_tick(4);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    LoadByteSource::D =>{
+                      self.registers.l = self.registers.d;
+                      self.clock.timer_tick(4);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    LoadByteSource::E =>{
+                      self.registers.l = self.registers.e;
+                      self.clock.timer_tick(4);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    LoadByteSource::H =>{
+                      self.registers.l = self.registers.h;
+                      self.clock.timer_tick(4);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    LoadByteSource::L =>{
+                      self.registers.l = self.registers.l;
+                      self.clock.timer_tick(4);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    LoadByteSource::HL =>{
+                      self.registers.b = self.bus.read_byte(self.registers.get_hl());
+                      self.clock.timer_tick(8);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    LoadByteSource::A =>{
+                      self.registers.l = self.registers.a;
+                      self.clock.timer_tick(4);
+                      self.program_counter.wrapping_add(1)
+                    },
+                    _ => {self.program_counter.wrapping_add(1)}
+                  }
+                },
+                LoadByteTarget::A16 =>{
+                  match source{
+                    LoadByteSource::A =>{
+                      self.bus.write_byte(self.read_next_byte() as u16, self.registers.a);
+                      self.clock.timer_tick(16);
+                      self.program_counter.wrapping_add(3)
+                    },
+                    LoadByteSource::SP =>{
+                      self.bus.write_byte(self.read_next_byte() as u16, self.pop() as u8);
+                      self.clock.timer_tick(20);
+                      self.program_counter.wrapping_add(3)
+                    },
+                    _=>{self.program_counter.wrapping_add(1)}
+                  }
+                },
+                LoadByteTarget::A8 =>{
+                  self.bus.write_byte(self.read_next_byte() as u16, self.registers.a);
+                  self.clock.timer_tick(12);
+                  self.program_counter.wrapping_add(2)
+                },
+                LoadByteTarget::FF00C => {
+                  self.bus.write_byte(self.registers.c as u16, self.registers.a);
+                  self.clock.timer_tick(8);
+                  self.program_counter.wrapping_add(2)
+                },
+                _ => { panic!("TODO: implement other sources") }
+              }  
             }
             _ => { panic!("TODO: implement other load types") }
           }
-        }
+        },
         Instruction::PUSH(target) => {
             let value = match target {
               StackTarget::BC => self.registers.get_bc(),
@@ -1487,19 +1815,32 @@ impl CPU {
 
   fn and(&mut self, value: u8) {
     self.registers.a &= value;
-    self.update_flags(self.registers.a);
+    self.registers.f.zero = self.registers.a == 0;
+    self.registers.f.subtract = false;
+    self.registers.f.half_carry = true;
+    self.registers.f.carry = false;
+  }
+
+  fn and_hl(&mut self, value: u8) {
+    self.registers.a &= value;
+    self.registers.f.zero = self.registers.a == 0;
+    self.registers.f.subtract = false;
+    self.registers.f.half_carry = true;
+    self.registers.f.carry = false;
   }
 
   fn sbc(&mut self, value: &mut u8) {
+    let a = self.registers.a;
     let carry = if self.registers.f.carry { 1 } else { 0 };
-    let (result, did_overflow) = self.registers.a.overflowing_sub(*value);
+    let (result, did_overflow) = a.overflowing_sub(*value);
     let (result, did_overflow2) = result.overflowing_sub(carry);
-    
+
     self.registers.a = result;
+    
     self.registers.f.zero = self.registers.a == 0;
     self.registers.f.subtract = true;
-    self.registers.f.half_carry = (self.registers.a & 0x0F) + (value & 0x0F) + carry > 0x0F;
-    self.registers.f.carry = did_overflow || did_overflow2;
+    self.registers.f.half_carry = (a & 0x0F) < (*value & 0x0F) + carry;
+    self.registers.f.carry = did_overflow || did_overflow2
   }
 
   fn sbc_hl(&mut self, value: u8) {
@@ -1812,9 +2153,9 @@ impl CPU {
     // The specific flag logic depends on your emulation requirements.
     // Here's a simple example of setting or clearing the carry flag:
     if did_overflow {
-        self.registers.f |= 0b0001; // Set the carry flag
+        self.registers.f.carry = true; // Set the carry flag
     } else {
-        self.registers.f &= !0b0001; // Clear the carry flag
+        self.registers.f.carry = false; // Clear the carry flag
     }
   }
 }
