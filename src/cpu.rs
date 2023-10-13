@@ -2416,6 +2416,7 @@ fn handle_interrupt(&mut self, addr: u16) -> Result<(), EmulatorError> {
     let pc = self.program_counter;
     self.push(pc);
 
+
     // Disable further interrupts while servicing the current one
     self.ime = false;
 
