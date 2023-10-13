@@ -80,7 +80,7 @@ pub enum JumpTarget{
     A16, HL
 }
 pub enum IncDecTarget{
-    A,B,C,D,E,H,L, BC, DE, SP, HL
+    A,B,C,D,E,H,L, BC, DE, SP, HL, HLP
 }
 
 pub enum PrefixTarget {
