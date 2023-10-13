@@ -135,11 +135,36 @@ impl CPU {
               self.program_counter.wrapping_add(1)
             }
             ArithmeticTarget::SP => {
-              self.push(add_sp());
+              self.stack_pointer = self.add_sp();
               self.clock.timer_tick(8);
               self.program_counter.wrapping_add(1)
             }
             _ => {self.program_counter}
+          }
+        },
+        Instruction::ADDHL(target) =>{
+          match target {
+            ArithmeticTarget::BC =>{
+              self.registers.set_hl(self.addhl(self.registers.get_bc()));
+              self.clock.timer_tick(8);
+              self.program_counter.wrapping_add(1)
+            },
+            ArithmeticTarget::DE =>{
+              self.registers.set_hl(self.addhl(self.registers.get_de()));
+              self.clock.timer_tick(8);
+              self.program_counter.wrapping_add(1)
+            },
+            ArithmeticTarget::HL =>{
+              self.registers.set_hl(self.addhl(self.registers.get_hl()));
+              self.clock.timer_tick(8);
+              self.program_counter.wrapping_add(1)
+            },
+            ArithmeticTarget::SP =>{
+              self.registers.set_hl(self.addhl(self.stack_pointer));
+              self.clock.timer_tick(8);
+              self.program_counter.wrapping_add(1)
+            },
+            _=>{panic!("")}
           }
         },
         Instruction::SUB(target) => {
@@ -148,7 +173,6 @@ impl CPU {
               let value = self.registers.a;
               let (new_value, did_overflow) = self.sub(value);
               self.registers.a = new_value;
-              self.update_flags(new_value, did_overflow);
               self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             }
@@ -156,7 +180,6 @@ impl CPU {
               let value = self.registers.b;
               let (new_value, did_overflow) = self.sub(value);
               self.registers.a = new_value;
-              self.update_flags(new_value, did_overflow);
               self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             }
@@ -164,7 +187,6 @@ impl CPU {
               let value = self.registers.c;
               let (new_value, did_overflow) = self.sub(value);
               self.registers.a = new_value;
-              self.update_flags(new_value, did_overflow);
               self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             }
@@ -172,7 +194,6 @@ impl CPU {
               let value = self.registers.d;
               let (new_value, did_overflow) = self.sub(value);
               self.registers.a = new_value;
-              self.update_flags(new_value, did_overflow);
               self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             }
@@ -180,7 +201,6 @@ impl CPU {
               let value = self.registers.e;
               let (new_value, did_overflow) = self.sub(value);
               self.registers.a = new_value;
-              self.update_flags(new_value, did_overflow);
               self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             }
@@ -188,7 +208,6 @@ impl CPU {
               let value = self.registers.h;
               let (new_value, did_overflow) = self.sub(value);
               self.registers.a = new_value;
-              self.update_flags(new_value, did_overflow);
               self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             }
@@ -196,7 +215,6 @@ impl CPU {
               let value = self.registers.l;
               let (new_value, did_overflow) = self.sub(value);
               self.registers.a = new_value;
-              self.update_flags(new_value, did_overflow);
               self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             }
@@ -205,7 +223,6 @@ impl CPU {
               let value = self.bus.read_byte(address);
               let (new_value, did_overflow) = self.sub(value);
               self.registers.a = new_value;
-              self.update_flags(new_value, did_overflow);
               self.clock.timer_tick(8);
               self.program_counter.wrapping_add(1)
             }
@@ -213,7 +230,6 @@ impl CPU {
               let immediate_value = self.read_next_byte();
               let (new_value, did_overflow) = self.sub(immediate_value);
               self.registers.a = new_value;
-              self.update_flags(new_value, did_overflow);
               self.clock.timer_tick(8);
               self.program_counter.wrapping_add(2)
             }
@@ -326,7 +342,7 @@ impl CPU {
                 self.program_counter.wrapping_add(1)
             }
             ArithmeticTarget::D8 =>{
-              let immediate_value = self.read_next_byte();
+              let mut immediate_value = self.read_next_byte();
               self.sbc(&mut immediate_value);
               self.clock.timer_tick(8);
               self.program_counter.wrapping_add(2)
@@ -380,7 +396,7 @@ impl CPU {
                 self.program_counter.wrapping_add(1)
             }
             ArithmeticTarget::D8 => {
-              let immediate_value = self.read_next_byte();
+              let mut immediate_value = self.read_next_byte();
               self.or(&mut immediate_value);
               self.clock.timer_tick(4);
               self.program_counter.wrapping_add(2)
@@ -434,7 +450,7 @@ impl CPU {
                 self.program_counter.wrapping_add(1)
             }
             ArithmeticTarget::D8 => {
-              let immediate_value = self.read_next_byte();
+              let mut immediate_value = self.read_next_byte();
               self.xor(&mut immediate_value);
               self.clock.timer_tick(8);
               self.program_counter.wrapping_add(2)
@@ -488,7 +504,7 @@ impl CPU {
                 self.program_counter.wrapping_add(1)
             }
             ArithmeticTarget::D8 => {
-              let immediate_value = self.read_next_byte();
+              let mut immediate_value = self.read_next_byte();
               self.cp(&mut immediate_value);
               self.clock.timer_tick(8);
               self.program_counter.wrapping_add(2)
@@ -533,16 +549,21 @@ impl CPU {
               self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
-            IncDecTarget::HL => {
+            IncDecTarget::HLP => {
                 // Read the value from memory at the address pointed to by HL
                 let address = self.registers.get_hl();
                 let mut value = self.bus.read_byte(address);
                 self.inc(&mut value);
                 // Write the modified value back to memory
                 self.bus.write_byte(address, value);
-                self.clock.timer_tick(8);
+                self.clock.timer_tick(12);
                 self.program_counter.wrapping_add(1)
             }
+            IncDecTarget::HL => {
+              self.registers.set_hl(self.registers.get_hl().wrapping_add(1));
+              self.clock.timer_tick(8);
+              self.program_counter.wrapping_add(1)
+            },
             IncDecTarget::BC =>{
               let value = self.registers.get_bc();
               let new_value = value.wrapping_add(1);
@@ -558,7 +579,7 @@ impl CPU {
               self.program_counter.wrapping_add(1)
             }
             IncDecTarget::SP =>{
-              //TODO
+              self.stack_pointer.wrapping_add(1);
               self.clock.timer_tick(8);
               self.program_counter.wrapping_add(1)
             }
@@ -602,16 +623,21 @@ impl CPU {
               self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
-            IncDecTarget::HL => {
+            IncDecTarget::HLP => {
                 // Read the value from memory at the address pointed to by HL
                 let address = self.registers.get_hl();
                 let mut value = self.bus.read_byte(address);
                 self.dec(&mut value);
                 // Write the modified value back to memory
                 self.bus.write_byte(address, value);
-                self.clock.timer_tick(8);
+                self.clock.timer_tick(12);
                 self.program_counter.wrapping_add(1)
-            }
+            },
+            IncDecTarget::HL => {
+              self.registers.set_hl(self.registers.get_hl().wrapping_sub(1));
+              self.clock.timer_tick(8);
+              self.program_counter.wrapping_add(1)
+            },
             IncDecTarget::BC =>{
               let value = self.registers.get_bc();
               let new_value = value.wrapping_sub(1);
@@ -627,7 +653,7 @@ impl CPU {
               self.program_counter.wrapping_add(1)
             }
             IncDecTarget::SP =>{
-              //TODO
+              self.stack_pointer.wrapping_sub(1);
               self.clock.timer_tick(8);
               self.program_counter.wrapping_add(1)
             }
@@ -1277,12 +1303,10 @@ impl CPU {
           }
           match target{
             JumpTarget::A16 => {
-              self.jump(jump_condition,);
-              self.program_counter.wrapping_add(3)
+              self.jump(jump_condition)
             },
             JumpTarget::HL =>{
-              self.jump(jump_condition,);
-              self.program_counter.wrapping_add(1)
+              self.jump_hl(jump_condition)
             },
           }  
         }
@@ -1302,7 +1326,7 @@ impl CPU {
                       self.clock.timer_tick(12);
                       self.program_counter.wrapping_add(3)
                     },
-                    _=>{self.program_counter.wrapping_add(1)}
+                    _=>{panic!{"Err:"}}
                   }
                 },
                 LoadByteTarget::DE =>{
@@ -1317,7 +1341,7 @@ impl CPU {
                       self.clock.timer_tick(12);
                       self.program_counter.wrapping_add(3)
                     },
-                    _=>{self.program_counter.wrapping_add(1)}
+                    _=>{panic!{"Err:"}}
                   }
                 },
                 LoadByteTarget::HL =>{
@@ -1334,23 +1358,27 @@ impl CPU {
                     },
                     LoadByteSource::SP=>{
                       let r8 = self.read_next_byte() as i8 as i16;
-                      let sp = self.pop() as i16;
+                      let sp = self.stack_pointer as i16;
                       self.registers.set_hl(sp.wrapping_add(r8) as u16);
+                      self.registers.f.zero = false;
+                      self.registers.f.subtract = false;
+                      self.registers.f.half_carry =(sp as u16 & 0x0F) + (r8 as u16 & 0x0F) > 0x0F;
+                      self.registers.f.carry = (sp as u16 & 0xFF) + (r8 as u16 & 0xFF) > 0xFF;
                       self.clock.timer_tick(12);
                       self.program_counter.wrapping_add(2)
                     }
-                    _=>{self.program_counter.wrapping_add(1)}
+                    _=>{panic!{"Err:"}}
                   }
                 },
                 LoadByteTarget::SP => {
                   match source{
                     LoadByteSource::D16=>{
-                      self.push(self.read_next_word());
+                      self.stack_pointer = self.read_next_word();
                       self.clock.timer_tick(8);
                       self.program_counter.wrapping_add(1)
                     },
                     LoadByteSource::HL=>{
-                      self.push(self.registers.get_hl());
+                      self.stack_pointer =self.registers.get_hl();
                       self.clock.timer_tick(12);
                       self.program_counter.wrapping_add(3)
                     },
@@ -1734,7 +1762,7 @@ impl CPU {
                       self.program_counter.wrapping_add(3)
                     },
                     LoadByteSource::SP =>{
-                      self.bus.write_byte(self.read_next_byte() as u16, self.pop() as u8);
+                      self.bus.write_byte(self.read_next_byte() as u16, self.stack_pointer as u8);
                       self.clock.timer_tick(20);
                       self.program_counter.wrapping_add(3)
                     },
@@ -1775,7 +1803,13 @@ impl CPU {
                 StackTarget::BC => self.registers.set_bc(result),
                 StackTarget::DE => self.registers.set_de(result),
                 StackTarget::HL => self.registers.set_hl(result),
-                StackTarget::AF => self.registers.set_af(result),
+                StackTarget::AF => {
+                  self.registers.f.zero = result == 0;
+                  self.registers.f.subtract = false;
+                  self.registers.f.half_carry =false;
+                  self.registers.f.carry = false;
+                  self.registers.set_af(result)
+                },
                 _ => { panic!("Err:") }
             };
             self.clock.timer_tick(16);
@@ -1813,13 +1847,26 @@ impl CPU {
             }
             self.return_(jump_condition)
         }
-        Instruction::JR(offset) => {
-          // Calculate the new program counter value by adding the signed offset.
-          let new_program_counter = (self.program_counter as i32 + offset as i32) as u16;
-          self.clock.timer_tick(4);
-          new_program_counter
+        Instruction::JR(test) => {
+          let jump_condition = match test {
+            JumpTest::NotZero => !self.registers.f.zero,
+            JumpTest::NotCarry => !self.registers.f.carry,
+            JumpTest::Zero => self.registers.f.zero,
+            JumpTest::Carry => self.registers.f.carry,
+            JumpTest::Always => true,
+            _ => { panic!("Err: ") }
+          };
+          if jump_condition {
+            self.clock.timer_tick(12)
+          }else{
+            self.clock.timer_tick(8);
+          }
+          
+          self.jr(jump_condition)
         }
         Instruction::STOP() => {
+          self.is_halted = true;
+          //Halt display until button pressed
           self.clock.timer_tick(4);
           self.program_counter.wrapping_add(2)
         }
@@ -1906,6 +1953,9 @@ impl CPU {
             _ =>{self.program_counter.wrapping_add(1)}
           }
         }
+        Instruction::DAA() => {
+          self.daa()
+        },
         _ => { /* TODO: support more instructions */ self.program_counter}
         }
     }
@@ -1936,9 +1986,30 @@ impl CPU {
     new_value
   }
 
+  fn addhl(&mut self, value: u16) -> u16 {
+    let (new_value, did_overflow) = self.registers.get_hl().overflowing_add(value);
+    self.registers.f.subtract = false;
+    self.registers.f.carry = did_overflow;
+    self.registers.f.half_carry = (self.registers.get_hl() & 0xF) + (new_value & 0xF) > 0xF;
+    new_value
+  }
+
+  fn add_sp(&mut self) -> u16{
+    let r8 = self.read_next_byte() as i8;
+    let (new_value, did_overflow) = (self.stack_pointer as i16).overflowing_add(r8 as i16);
+    self.registers.f.zero = false;
+    self.registers.f.subtract = false;
+    self.registers.f.carry = did_overflow;
+    self.registers.f.half_carry = (self.stack_pointer & 0xF) + (new_value as u16 & 0xF) > 0xF;
+    new_value as u16
+  }
  
   fn sub(&mut self, value: u8) -> (u8, bool) {
     let (new_value, did_overflow) = self.registers.a.overflowing_sub(value);
+    self.registers.f.zero = new_value == 0;
+    self.registers.f.subtract = true;
+    self.registers.f.half_carry = (self.registers.a & 0x0F) < (value & 0x0F);
+    self.registers.f.carry = did_overflow;
     (new_value, did_overflow)
   }
 
@@ -2038,6 +2109,28 @@ impl CPU {
     self.registers.f.subtract = true;
     self.registers.f.half_carry = (*value & 0x0F) == 0x0F;
     // Carry flag remains unchanged
+  }
+  fn daa(&mut self)->u16{
+    if !self.registers.f.half_carry {
+      if self.registers.f.carry || self.registers.a > 0x99 {
+        self.registers.a.wrapping_add(0x60);
+        self.registers.f.carry = true;
+      }
+      if self.registers.f.half_carry || (self.registers.a & 0x0F) > 0x09{
+        self.registers.a.wrapping_add(0x6);
+      }
+    }else{
+      if self.registers.f.carry {
+        self.registers.a.wrapping_sub(0x60);
+      }
+      if self.registers.f.half_carry {
+        self.registers.a.wrapping_sub(0x6);
+      }
+    }
+    self.registers.f.zero = self.registers.a == 0;
+    self.registers.f.half_carry = false;
+    self.clock.timer_tick(4);
+    self.program_counter.wrapping_add(1)
   }
 
   fn ccf(&mut self) {
@@ -2247,14 +2340,36 @@ impl CPU {
   }
 
 
-  fn jump(&self, should_jump: bool) -> u16 {
+  fn jump(&mut self, should_jump: bool) -> u16 {
     if should_jump {
       let least_significant_byte = self.bus.read_byte(self.program_counter + 1) as u16;
       let most_significant_byte = self.bus.read_byte(self.program_counter + 2) as u16;
         (most_significant_byte << 8) | least_significant_byte
-      } else {
-        self.program_counter.wrapping_add(3)
-      }
+    } else {
+      self.program_counter.wrapping_add(3)
+    }
+  }
+
+  fn jump_hl(&mut self, should_jump: bool ) -> u16 {
+    if should_jump {
+      let least_significant_byte = self.bus.read_byte(self.registers.get_hl() + 1) as u16;
+      let most_significant_byte = self.bus.read_byte(self.registers.get_hl() + 2) as u16;
+        (most_significant_byte << 8) | least_significant_byte
+    } else {
+      self.program_counter.wrapping_add(1)
+    }
+  }
+
+  fn jr(&mut self, should_jump: bool) -> u16 {
+    if should_jump {
+      let r8 = self.read_next_byte() as i8;
+      let address = (self.program_counter as i16).wrapping_add(r8 as i16);
+      let least_significant_byte = self.bus.read_byte((address as u16).wrapping_add(1)) as u16;
+      let most_significant_byte = self.bus.read_byte((address as u16).wrapping_add(2)) as u16;
+        (most_significant_byte << 8) | least_significant_byte
+    } else {
+      self.program_counter.wrapping_add(2)
+    }
   }
 
   fn call(&mut self, should_jump: bool) -> u16 {
@@ -2274,20 +2389,6 @@ impl CPU {
       self.program_counter.wrapping_add(1)
     }
   }
-
-    // For all instructions
-  fn update_flags(&mut self, result: u8, did_overflow: bool) {
-    // Update flag register as needed.
-    // For example, setting or clearing the carry and overflow flags.
-    // The specific flag logic depends on your emulation requirements.
-    // Here's a simple example of setting or clearing the carry flag:
-    if did_overflow {
-        self.registers.f.carry = true; // Set the carry flag
-    } else {
-        self.registers.f.carry = false; // Clear the carry flag
-    }
-  }
-
   fn handle_interrupts(&mut self) -> Result<(), EmulatorError> {
     if self.ime {
         let interrupt_flags = self.ie & self.if_reg;
@@ -2313,7 +2414,6 @@ impl CPU {
 fn handle_interrupt(&mut self, addr: u16) -> Result<(), EmulatorError> {
     // Push the return address onto the stack
     let pc = self.program_counter;
-
     self.push(pc);
 
 
