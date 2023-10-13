@@ -1877,7 +1877,7 @@ impl CPU {
 fn handle_interrupt(&mut self, addr: u16) -> Result<(), EmulatorError> {
     // Push the return address onto the stack
     let pc = self.program_counter;
-    self.push_stack(pc)?;
+    self.push_stack(pc);
 
     // Disable further interrupts while servicing the current one
     self.ime = false;
