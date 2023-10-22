@@ -9,8 +9,8 @@ pub struct Registers {
     pub l: u8,
 }
 
-
-struct FlagsRegister {
+#[derive(Default, Clone, Copy)]
+pub struct FlagsRegister {
     pub zero: bool,
     pub subtract: bool,
     pub half_carry: bool,
@@ -49,7 +49,7 @@ impl std::convert::From<u8> for FlagsRegister {
 
 impl Registers {
     pub fn get_af(&self) -> u16 {
-        (self.a as u16) << 8 | u8::from(self.f) as u16 
+        ((self.a as u16) << 8) | u8::from(self.f) as u16 
       }
     pub fn set_af(&mut self, value: u16) {
         self.a = ((value & 0xFF00) >> 8) as u8;

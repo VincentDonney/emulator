@@ -1,16 +1,14 @@
 use crate::instruction::*;
+use crate::launch;
 use crate::register;
-use crate::timer;
-
-
-
-struct CPU{
+use crate::timer::*;
+pub struct CPU{
     registers:register::Registers,
     program_counter:u16,
     stack_pointer:u16,
-    clock:timer::TimerContext,
+    clock:TimerContext,
     bus:MemoryBus,
-    is_halted:bool,
+    pub is_halted:bool,
     ime:bool,
     ie:u8,
     if_reg:u8,
@@ -23,7 +21,7 @@ impl MemoryBus {
   fn read_byte(&self, address: u16) -> u8 {
     self.mem[address as usize]
   }
-  fn write_byte(&self, address : u16, byte:u8){
+  fn write_byte(&mut self, address : u16, byte:u8){
     self.mem[address as usize] = byte; 
   }
 }
@@ -40,6 +38,34 @@ enum EmulatorError {
 }
 
 impl CPU {
+  pub fn new() -> CPU{
+    let flags:register::FlagsRegister = Default::default();  
+    let regs = register::Registers{
+      a:0x01,
+      b:0x00,
+      c:0x13,
+      d:0x00,
+      e:0xD8,
+      f:flags,
+      h:0x01,
+      l:0x4D,
+    };
+    let mem_bus = MemoryBus {
+      mem:launch::launch()
+    };
+    CPU {
+      registers: regs,
+      program_counter: 0x0100,
+      stack_pointer: 0xFFFE,
+      is_halted: false,
+      clock: TimerContext::new(),
+      bus: mem_bus,
+      ime: true,
+      ie: 0,
+      if_reg: 0
+    }
+  }
+
   fn read_next_byte(&self) -> u8 {
     self.bus.read_byte(self.program_counter).wrapping_add(1)
   }
@@ -48,7 +74,7 @@ impl CPU {
     self.program_counter.wrapping_add(1)
   }
 
-  fn step(&mut self) {
+  pub fn step(&mut self) {
     let mut instruction_byte = self.bus.read_byte(self.program_counter);
     
     let prefixed = instruction_byte == 0xCB;
@@ -145,22 +171,30 @@ impl CPU {
         Instruction::ADDHL(target) =>{
           match target {
             ArithmeticTarget::BC =>{
-              self.registers.set_hl(self.addhl(self.registers.get_bc()));
+              let bc = self.registers.get_bc();
+              let add = self.addhl(bc);
+              self.registers.set_hl(add);
               self.clock.timer_tick(8);
               self.program_counter.wrapping_add(1)
             },
             ArithmeticTarget::DE =>{
-              self.registers.set_hl(self.addhl(self.registers.get_de()));
+              let de = self.registers.get_de();
+              let add =self.addhl(de);
+              self.registers.set_hl(add);
               self.clock.timer_tick(8);
               self.program_counter.wrapping_add(1)
             },
             ArithmeticTarget::HL =>{
-              self.registers.set_hl(self.addhl(self.registers.get_hl()));
+              let hl = self.registers.get_hl();
+              let add = self.addhl(hl);
+              self.registers.set_hl(add);
               self.clock.timer_tick(8);
               self.program_counter.wrapping_add(1)
             },
             ArithmeticTarget::SP =>{
-              self.registers.set_hl(self.addhl(self.stack_pointer));
+              let sp =self.stack_pointer;
+              let add = self.addhl(sp);
+              self.registers.set_hl(add);
               self.clock.timer_tick(8);
               self.program_counter.wrapping_add(1)
             },
@@ -299,37 +333,44 @@ impl CPU {
         Instruction::SBC(target) => {
           match target {
             ArithmeticTarget::A => {
-              self.sbc(&mut self.registers.a);
+              let a =self.registers.a;
+              self.sbc(&a);
               self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             ArithmeticTarget::B => {
-              self.sbc(&mut self.registers.b);
+              let b = self.registers.b;
+              self.sbc(&b);
               self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             ArithmeticTarget::C => {
-              self.sbc(&mut self.registers.c);
+              let c = self.registers.c;
+              self.sbc(&c);
               self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             ArithmeticTarget::D => {
-              self.sbc(&mut self.registers.d);
+              let d = self.registers.d;
+              self.sbc(&d);
               self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             ArithmeticTarget::E => {
-              self.sbc(&mut self.registers.e);
+              let e = self.registers.e;
+              self.sbc(&e);
               self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             ArithmeticTarget::H => {
-              self.sbc(&mut self.registers.h);
+              let h = self.registers.h;
+              self.sbc(&h);
               self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             ArithmeticTarget::L => {
-              self.sbc(&mut self.registers.l);
+              let l = self.registers.l;
+              self.sbc(&l);
               self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
@@ -353,37 +394,44 @@ impl CPU {
         Instruction::OR(target) => {
           match target {
             ArithmeticTarget::A => {
-              self.or(&mut self.registers.a);
+              let a =self.registers.a;
+              self.or(&a);
               self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             ArithmeticTarget::B => {
-              self.or(&mut self.registers.b);
+              let b = self.registers.b;
+              self.or(&b);
               self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             ArithmeticTarget::C => {
-              self.or(&mut self.registers.c);
+              let c = self.registers.c;
+              self.or(&c);
               self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             ArithmeticTarget::D => {
-              self.or(&mut self.registers.d);
+              let d = self.registers.d;
+              self.or(&d);
               self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             ArithmeticTarget::E => {
-              self.or(&mut self.registers.e);
+              let e = self.registers.e;
+              self.or(&e);
               self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             ArithmeticTarget::H => {
-              self.or(&mut self.registers.h);
+              let h = self.registers.h;
+              self.or(&h);
               self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             ArithmeticTarget::L => {
-              self.or(&mut self.registers.l);
+              let l =self.registers.l;
+              self.or(&l);
               self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
@@ -407,37 +455,44 @@ impl CPU {
         Instruction::XOR(target) => {
           match target {
             ArithmeticTarget::A => {
-              self.xor(&mut self.registers.a);
+              let a = self.registers.a;
+              self.xor(&a);
               self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             ArithmeticTarget::B => {
-              self.xor(&mut self.registers.b);
+              let b = self.registers.b;
+              self.xor(&b);
               self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             ArithmeticTarget::C => {
-              self.xor(&mut self.registers.c);
+              let c =self.registers.c;
+              self.xor(&c);
               self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             ArithmeticTarget::D => {
-              self.xor(&mut self.registers.d);
+              let d = self.registers.d;
+              self.xor(&d);
               self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             ArithmeticTarget::E => {
-              self.xor(&mut self.registers.e);
+              let e =self.registers.e;
+              self.xor(&e);
               self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             ArithmeticTarget::H => {
-              self.xor(&mut self.registers.h);
+              let h = self.registers.h;
+              self.xor(&h);
               self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             ArithmeticTarget::L => {
-              self.xor(&mut self.registers.l);
+              let l =self.registers.l;
+              self.xor(&l);
               self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
@@ -461,37 +516,44 @@ impl CPU {
         Instruction::CP(target) => {
           match target {
             ArithmeticTarget::A => {
-              self.cp(&self.registers.a);
+              let a = self.registers.a;
+              self.cp(&a);
               self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             ArithmeticTarget::B => {
-              self.cp(&self.registers.b);
+              let b = self.registers.b;
+              self.cp(&b);
               self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             ArithmeticTarget::C => {
-              self.cp(&self.registers.c);
+              let c = self.registers.c;
+              self.cp(&c);
               self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             ArithmeticTarget::D => {
-              self.cp(&self.registers.d);
+              let d = self.registers.d;
+              self.cp(&d);
               self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             ArithmeticTarget::E => {
-              self.cp(&self.registers.e);
+              let e = self.registers.e;
+              self.cp(&e);
               self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             ArithmeticTarget::H => {
-              self.cp(&self.registers.h);
+              let h = self.registers.h;
+              self.cp(&h);
               self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             ArithmeticTarget::L => {
-              self.cp(&self.registers.l);
+              let l = self.registers.l;
+              self.cp(&l);
               self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
@@ -515,37 +577,51 @@ impl CPU {
         Instruction::INC(target) => {
           match target {
             IncDecTarget::A => {
-              self.inc(&mut self.registers.a);
+              let a  = self.registers.a.wrapping_add(1); 
+              self.inc(&a);
+              self.registers.a = a;
               self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             IncDecTarget::B => {
-              self.inc(&mut self.registers.b);
+              let b  = self.registers.b.wrapping_add(1); 
+              self.inc(&b);
+              self.registers.b = b;
               self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             IncDecTarget::C => {
-              self.inc(&mut self.registers.c);
+              let c  = self.registers.c.wrapping_add(1); 
+              self.inc(&c);
+              self.registers.c = c;
               self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             IncDecTarget::D => {
-              self.inc(&mut self.registers.d);
+              let d  = self.registers.d.wrapping_add(1); 
+              self.inc(&d);
+              self.registers.d = d;
               self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             IncDecTarget::E => {
-              self.inc(&mut self.registers.e);
+              let e  = self.registers.e.wrapping_add(1); 
+              self.inc(&e);
+              self.registers.e = e;
               self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             IncDecTarget::H => {
-              self.inc(&mut self.registers.h);
+              let h  = self.registers.h.wrapping_add(1); 
+              self.inc(&h);
+              self.registers.h = h;
               self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             IncDecTarget::L => {
-              self.inc(&mut self.registers.l);
+              let l  = self.registers.l.wrapping_add(1); 
+              self.inc(&l);
+              self.registers.l = l;
               self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
@@ -579,47 +655,60 @@ impl CPU {
               self.program_counter.wrapping_add(1)
             }
             IncDecTarget::SP =>{
-              self.stack_pointer.wrapping_add(1);
+              let _ = self.stack_pointer.wrapping_add(1);
               self.clock.timer_tick(8);
               self.program_counter.wrapping_add(1)
             }
-            _=>{self.program_counter.wrapping_add(1)}
           }
         },
         Instruction::DEC(target) => {
           match target {
             IncDecTarget::A => {
-              self.dec(&mut self.registers.a);
+              let a  = self.registers.a.wrapping_sub(1); 
+              self.inc(&a);
+              self.registers.a = a;
               self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             IncDecTarget::B => {
-              self.dec(&mut self.registers.b);
+              let b  = self.registers.b.wrapping_sub(1); 
+              self.inc(&b);
+              self.registers.b = b;
               self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             IncDecTarget::C => {
-              self.dec(&mut self.registers.c);
+              let c  = self.registers.c.wrapping_sub(1); 
+              self.inc(&c);
+              self.registers.c = c;
               self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             IncDecTarget::D => {
-              self.dec(&mut self.registers.d);
+              let d  = self.registers.d.wrapping_sub(1); 
+              self.inc(&d);
+              self.registers.d = d;
               self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             IncDecTarget::E => {
-              self.dec(&mut self.registers.e);
+              let e  = self.registers.e.wrapping_sub(1); 
+              self.inc(&e);
+              self.registers.e = e;
               self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             IncDecTarget::H => {
-              self.dec(&mut self.registers.h);
+              let h  = self.registers.h.wrapping_sub(1); 
+              self.inc(&h);
+              self.registers.h = h;
               self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
             IncDecTarget::L => {
-              self.dec(&mut self.registers.l);
+              let l  = self.registers.l.wrapping_sub(1); 
+              self.inc(&l);
+              self.registers.l = l;
               self.clock.timer_tick(4);
               self.program_counter.wrapping_add(1)
             },
@@ -653,11 +742,10 @@ impl CPU {
               self.program_counter.wrapping_add(1)
             }
             IncDecTarget::SP =>{
-              self.stack_pointer.wrapping_sub(1);
+              let _ = self.stack_pointer.wrapping_sub(1);
               self.clock.timer_tick(8);
               self.program_counter.wrapping_add(1)
             }
-            _ =>{self.program_counter.wrapping_add(1)}
           }
         }, 
         Instruction::CCF() => {
@@ -795,53 +883,59 @@ impl CPU {
                   self.clock.timer_tick(16);
                   self.program_counter.wrapping_add(2)
               },
-              _=>{self.program_counter.wrapping_add(1)}
           }
         }, 
         Instruction::RES(bit, target) => {
           match target {
               PrefixTarget::A => {
-                self.res(bit, &mut self.registers.a);
+                let a = self.registers.a;
+                self.registers.a = self.res(bit,a);
                 self.clock.timer_tick(8);
                 self.program_counter.wrapping_add(2)
               },
               PrefixTarget::B => {
-                self.res(bit, &mut self.registers.b);
+                let b = self.registers.b;
+                self.registers.b = self.res(bit,b);
                 self.clock.timer_tick(8);
                 self.program_counter.wrapping_add(2)
               },
               PrefixTarget::C => {
-                self.res(bit, &mut self.registers.c);
+                let c = self.registers.c;
+                self.registers.c = self.res(bit,c);
                 self.clock.timer_tick(8);
                 self.program_counter.wrapping_add(2)
               },
               PrefixTarget::D => {
-                self.res(bit, &mut self.registers.d);
+                let d = self.registers.d;
+                self.registers.d = self.res(bit,d);
                 self.clock.timer_tick(8);
                 self.program_counter.wrapping_add(2)
               },
               PrefixTarget::E => {
-                self.res(bit, &mut self.registers.e);
+                let e = self.registers.e;
+                self.registers.e = self.res(bit,e);
                 self.clock.timer_tick(8);
                 self.program_counter.wrapping_add(2)
               },
               PrefixTarget::H => {
-                self.res(bit, &mut self.registers.h);
+                let h = self.registers.h;
+                self.registers.h = self.res(bit,h);
                 self.clock.timer_tick(8);
                 self.program_counter.wrapping_add(2)
               },
               PrefixTarget::L => {
-                self.res(bit, &mut self.registers.l);
+                let l = self.registers.l;
+                self.registers.l = self.res(bit,l);
                 self.clock.timer_tick(8);
                 self.program_counter.wrapping_add(2)
               },
               PrefixTarget::HL => {
                   // Read the value from memory at the address pointed to by HL
                   let address = self.registers.get_hl();
-                  let mut value = self.bus.read_byte(address);
-                  self.res(bit, &mut value);
+                  let value = self.bus.read_byte(address);
+                  let res_val = self.res(bit, value);
                   // Write the modified value back to memory
-                  self.bus.write_byte(address, value);
+                  self.bus.write_byte(address, res_val);
                   self.clock.timer_tick(16);
                   self.program_counter.wrapping_add(2)
               }
@@ -850,47 +944,54 @@ impl CPU {
         Instruction::SET(bit, target) => {
           match target {
               PrefixTarget::A => {
-                self.set(bit, &mut self.registers.a);
+                let a = self.registers.a;
+                self.registers.a = self.set(bit,a);
                 self.clock.timer_tick(8);
                 self.program_counter.wrapping_add(2)
               },
               PrefixTarget::B => {
-                self.set(bit, &mut self.registers.b);
+                let b = self.registers.b;
+                self.registers.b = self.set(bit,b);
                 self.clock.timer_tick(8);
                 self.program_counter.wrapping_add(2)
               },
               PrefixTarget::C => {
-                self.set(bit, &mut self.registers.c);
+                let c = self.registers.c;
+                self.registers.c = self.set(bit,c);
                 self.clock.timer_tick(8);
                 self.program_counter.wrapping_add(2)
               },
               PrefixTarget::D => {
-                self.set(bit, &mut self.registers.d);
+                let d = self.registers.d;
+                self.registers.d = self.set(bit,d);
                 self.clock.timer_tick(8);
                 self.program_counter.wrapping_add(2)
               },
               PrefixTarget::E => {
-                self.set(bit, &mut self.registers.e);
+                let e = self.registers.e;
+                self.registers.e = self.set(bit,e);
                 self.clock.timer_tick(8);
                 self.program_counter.wrapping_add(2)
               },
               PrefixTarget::H => {
-                self.set(bit, &mut self.registers.h);
+                let h = self.registers.h;
+                self.registers.h = self.set(bit,h);
                 self.clock.timer_tick(8);
                 self.program_counter.wrapping_add(2)
               },
               PrefixTarget::L => {
-                self.set(bit, &mut self.registers.l);
+                let l = self.registers.l;
+                self.registers.l = self.set(bit,l);
                 self.clock.timer_tick(8);
                 self.program_counter.wrapping_add(2)
               },
               PrefixTarget::HL => {
                   // Read the value from memory at the address pointed to by HL
                   let address = self.registers.get_hl();
-                  let mut value = self.bus.read_byte(address);
-                  self.set(bit, &mut value);
+                  let value = self.bus.read_byte(address);
+                  let set_val = self.set(bit, value);
                   // Write the modified value back to memory
-                  self.bus.write_byte(address, value);
+                  self.bus.write_byte(address, set_val);
                   self.clock.timer_tick(16);
                   self.program_counter.wrapping_add(2)
               }
@@ -899,37 +1000,51 @@ impl CPU {
         Instruction::SRL(target) => {
             match target {
                 PrefixTarget::A => {
-                  self.srl(&mut self.registers.a);
+                  let a  = self.registers.a;
+                  self.srl(&a);
+                  self.registers.a >>= 1;
                   self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::B => {
-                  self.srl(&mut self.registers.b);
+                  let b  = self.registers.b;
+                  self.srl(&b);
+                  self.registers.b >>= 1;
                   self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::C => {
-                  self.srl(&mut self.registers.c);
+                  let c  = self.registers.c;
+                  self.srl(&c);
+                  self.registers.c >>= 1;
                   self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::D => {
-                  self.srl(&mut self.registers.d);
+                  let d  = self.registers.d;
+                  self.srl(&d);
+                  self.registers.d >>= 1;
                   self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::E => {
-                  self.srl(&mut self.registers.e);
+                  let e  = self.registers.e;
+                  self.srl(&e);
+                  self.registers.e >>= 1;
                   self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::H => {
-                  self.srl(&mut self.registers.h);
+                  let h = self.registers.h;
+                  self.srl(&h);
+                  self.registers.h >>= 1;
                   self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::L => {
-                  self.srl(&mut self.registers.l);
+                  let l  = self.registers.l;
+                  self.srl(&l);
+                  self.registers.l >>= 1;
                   self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
@@ -937,7 +1052,8 @@ impl CPU {
                     // Read the value from memory at the address pointed to by HL
                     let address = self.registers.get_hl();
                     let mut value = self.bus.read_byte(address);
-                    self.srl(&mut value);
+                    self.srl(&value);
+                    value >>= 1;
                     // Write the modified value back to memory
                     self.bus.write_byte(address, value);
                     self.clock.timer_tick(8);
@@ -948,47 +1064,54 @@ impl CPU {
         Instruction::RR(target) => {
             match target {
                 PrefixTarget::A => {
-                  self.rr(&mut self.registers.a);
+                  let a  = self.registers.a;
+                  self.registers.a =self.rr(a);
                   self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::B => {
-                  self.rr(&mut self.registers.b);
+                  let b  = self.registers.b;
+                  self.registers.b =self.rr(b);
                   self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::C => {
-                  self.rr(&mut self.registers.c);
+                  let c  = self.registers.c;
+                  self.registers.c =self.rr(c);
                   self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::D => {
-                  self.rr(&mut self.registers.d);
+                  let d  = self.registers.d;
+                  self.registers.d =self.rr(d);
                   self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::E => {
-                  self.rr(&mut self.registers.e);
+                  let e = self.registers.e;
+                  self.registers.e =self.rr(e);
                   self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::H => {
-                  self.rr(&mut self.registers.h);
+                  let h  = self.registers.h;
+                  self.registers.h =self.rr(h);
                   self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::L => {
-                  self.rr(&mut self.registers.l);
+                  let l  = self.registers.l;
+                  self.registers.l =self.rr(l);
                   self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::HL => {
                     // Read the value from memory at the address pointed to by HL
                     let address = self.registers.get_hl();
-                    let mut value = self.bus.read_byte(address);
-                    self.rr(&mut value);
+                    let value = self.bus.read_byte(address);
+                    let rr_val = self.rr(value);
                     // Write the modified value back to memory
-                    self.bus.write_byte(address, value);
+                    self.bus.write_byte(address, rr_val);
                     self.clock.timer_tick(8);
                     self.program_counter.wrapping_add(2)
                 }
@@ -997,47 +1120,54 @@ impl CPU {
         Instruction::RL(target) => {
             match target {
                 PrefixTarget::A => {
-                  self.rl(&mut self.registers.a);
+                  let a = self.registers.a;
+                  self.registers.a = self.rl(a);
                   self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::B => {
-                  self.rl(&mut self.registers.b);
+                  let b = self.registers.b;
+                  self.registers.b = self.rl(b);
                   self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::C => {
-                  self.rl(&mut self.registers.c);
+                  let c = self.registers.c;
+                  self.registers.c = self.rl(c);
                   self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::D => {
-                  self.rl(&mut self.registers.d);
+                  let d = self.registers.d;
+                  self.registers.d = self.rl(d);
                   self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::E => {
-                  self.rl(&mut self.registers.e);
+                  let e = self.registers.e;
+                  self.registers.e = self.rl(e);
                   self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::H => {
-                  self.rl(&mut self.registers.h);
+                  let h = self.registers.h;
+                  self.registers.h = self.rl(h);
                   self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::L => {
-                  self.rl(&mut self.registers.l);
+                  let l = self.registers.l;
+                  self.registers.l = self.rl(l);
                   self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::HL => {
                     // Read the value from memory at the address pointed to by HL
                     let address = self.registers.get_hl();
-                    let mut value = self.bus.read_byte(address);
-                    self.rl(&mut value);
+                    let value = self.bus.read_byte(address);
+                    let rl_val = self.rl(value);
                     // Write the modified value back to memory
-                    self.bus.write_byte(address, value);
+                    self.bus.write_byte(address, rl_val);
                     self.clock.timer_tick(16);
                     self.program_counter.wrapping_add(2)
                 }
@@ -1046,47 +1176,54 @@ impl CPU {
         Instruction::RRC(target) => {
             match target {
                 PrefixTarget::A => {
-                  self.rrc(&mut self.registers.a);
+                  let a =self.registers.a;
+                  self.registers.a = self.rrc(a);
                   self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::B => {
-                  self.rrc(&mut self.registers.b);
+                  let b =self.registers.b;
+                  self.registers.b = self.rrc(b);
                   self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::C => {
-                  self.rrc(&mut self.registers.c);
+                  let c =self.registers.c;
+                  self.registers.c = self.rrc(c);
                   self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::D => {
-                  self.rrc(&mut self.registers.d);
+                  let d =self.registers.d;
+                  self.registers.d = self.rrc(d);
                   self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::E => {
-                  self.rrc(&mut self.registers.e);
+                  let e =self.registers.e;
+                  self.registers.e = self.rrc(e);
                   self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::H => {
-                  self.rrc(&mut self.registers.h);
+                  let h =self.registers.h;
+                  self.registers.h = self.rrc(h);
                   self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::L => {
-                  self.rrc(&mut self.registers.l);
+                  let l =self.registers.l;
+                  self.registers.l = self.rrc(l);
                   self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::HL => {
                     // Read the value from memory at the address pointed to by HL
                     let address = self.registers.get_hl();
-                    let mut value = self.bus.read_byte(address);
-                    self.rrc(&mut value);
+                    let value = self.bus.read_byte(address);
+                    let rrc_val = self.rrc(value);
                     // Write the modified value back to memory
-                    self.bus.write_byte(address, value);
+                    self.bus.write_byte(address, rrc_val);
                     self.clock.timer_tick(8);
                     self.program_counter.wrapping_add(2)
                 }
@@ -1095,47 +1232,55 @@ impl CPU {
         Instruction::RLC(target) => {
             match target {
                 PrefixTarget::A => {
-                  self.rlc(&mut self.registers.a);
+                  let a =self.registers.a;
+                  self.registers.a = self.rlc(a);
                   self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::B => {
-                  self.rlc(&mut self.registers.b);
+                  let b =self.registers.b;
+                  self.registers.b = self.rlc(b);
                   self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::C => {
-                  self.rlc(&mut self.registers.c);
+                  let c =self.registers.c;
+                  self.registers.c = self.rlc(c);
                   self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::D => {
-                  self.rlc(&mut self.registers.d);
+                  let d =self.registers.d;
+                  self.registers.d = self.rlc(d);
                   self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::E => {
-                  self.rlc(&mut self.registers.e);
+                  let e =self.registers.e;
+                  self.registers.e = self.rlc(e);
                   self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::H => {
-                  self.rlc(&mut self.registers.h);
+                  let h =self.registers.h;
+                  self.registers.h = self.rlc(h);
                   self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::L => {
-                  self.rlc(&mut self.registers.l);
+                  let l =self.registers.l;
+                  self.registers.l = self.rlc(l);
                   self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::HL => {
                     // Read the value from memory at the address pointed to by HL
                     let address = self.registers.get_hl();
-                    let mut value = self.bus.read_byte(address);
-                    self.rlc(&mut value);
+                    let value = self.bus.read_byte(address);
+                    let rlc_val = self.rlc(value);
+                    
                     // Write the modified value back to memory
-                    self.bus.write_byte(address, value);
+                    self.bus.write_byte(address, rlc_val);
                     self.clock.timer_tick(16);
                     self.program_counter.wrapping_add(2)
                 }
@@ -1144,47 +1289,54 @@ impl CPU {
         Instruction::SRA(target) => {
             match target {
                 PrefixTarget::A => {
-                  self.sra(&mut self.registers.a);
+                  let a = self.registers.a;
+                  self.registers.a =self.sra(a);
                   self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::B => {
-                  self.sra(&mut self.registers.b);
+                  let b = self.registers.b;
+                  self.registers.b =self.sra(b);
                   self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::C => {
-                  self.sra(&mut self.registers.c);
+                  let c = self.registers.c;
+                  self.registers.c =self.sra(c);
                   self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::D => {
-                  self.sra(&mut self.registers.d);
+                  let d = self.registers.d;
+                  self.registers.d =self.sra(d);
                   self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::E => {
-                  self.sra(&mut self.registers.e);
+                  let e = self.registers.e;
+                  self.registers.e =self.sra(e);
                   self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::H => {
-                  self.sra(&mut self.registers.h);
+                  let h = self.registers.h;
+                  self.registers.h =self.sra(h);
                   self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::L => {
-                  self.sra(&mut self.registers.l);
+                  let l = self.registers.l;
+                  self.registers.l =self.sra(l);
                   self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::HL => {
                     // Read the value from memory at the address pointed to by HL
                     let address = self.registers.get_hl();
-                    let mut value = self.bus.read_byte(address);
-                    self.sra(&mut value);
+                    let value = self.bus.read_byte(address);
+                    let sra_val = self.sra(value);
                     // Write the modified value back to memory
-                    self.bus.write_byte(address, value);
+                    self.bus.write_byte(address, sra_val);
                     self.clock.timer_tick(16);
                     self.program_counter.wrapping_add(2)
                 }
@@ -1193,37 +1345,51 @@ impl CPU {
         Instruction::SLA(target) => {
             match target {
                 PrefixTarget::A => {
-                  self.sla(&mut self.registers.a);
+                  let a = self.registers.a;
+                  self.sla(&a);
+                  self.registers.a <<= 1;
                   self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::B => {
-                  self.sla(&mut self.registers.b);
+                  let b = self.registers.b;
+                  self.sla(&b);
+                  self.registers.b <<= 1;
                   self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::C => {
-                  self.sla(&mut self.registers.c);
+                  let c = self.registers.c;
+                  self.sla(&c);
+                  self.registers.c <<= 1;
                   self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::D => {
-                  self.sla(&mut self.registers.d);
+                  let d = self.registers.d;
+                  self.sla(&d);
+                  self.registers.d <<= 1;
                   self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::E => {
-                  self.sla(&mut self.registers.e);
+                  let e = self.registers.e;
+                  self.sla(&e);
+                  self.registers.e <<= 1;
                   self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::H => {
-                  self.sla(&mut self.registers.h);
+                  let h = self.registers.h;
+                  self.sla(&h);
+                  self.registers.h <<= 1;
                   self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::L => {
-                  self.sla(&mut self.registers.l);
+                  let l = self.registers.l;
+                  self.sla(&l);
+                  self.registers.l <<= 1;
                   self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
@@ -1231,9 +1397,10 @@ impl CPU {
                     // Read the value from memory at the address pointed to by HL
                     let address = self.registers.get_hl();
                     let mut value = self.bus.read_byte(address);
-                    self.sla(&mut value);
+                    self.sla(&value);
+                    value <<=1;
                     // Write the modified value back to memory
-                    self.bus.write_byte(address, value);
+                    self.bus.write_byte(address, value );
                     self.clock.timer_tick(16);
                     self.program_counter.wrapping_add(2)
                 }
@@ -1242,47 +1409,54 @@ impl CPU {
         Instruction::SWAP(target) => {
             match target {
                 PrefixTarget::A => {
-                  self.swap(&mut self.registers.a);
+                  let a = self.registers.a;
+                  self.registers.a = self.swap(a);
                   self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::B => {
-                  self.swap(&mut self.registers.b);
+                  let b = self.registers.b;
+                  self.registers.b = self.swap(b);
                   self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::C => {
-                  self.swap(&mut self.registers.c);
+                  let c = self.registers.c;
+                  self.registers.c = self.swap(c);
                   self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::D => {
-                  self.swap(&mut self.registers.d);
+                  let d = self.registers.d;
+                  self.registers.d = self.swap(d);
                   self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::E => {
-                  self.swap(&mut self.registers.e);
+                  let e = self.registers.e;
+                  self.registers.e = self.swap(e);
                   self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::H => {
-                  self.swap(&mut self.registers.h);
+                  let h = self.registers.h;
+                  self.registers.h = self.swap(h);
                   self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::L => {
-                  self.swap(&mut self.registers.l);
+                  let l = self.registers.l;
+                  self.registers.l = self.swap(l);
                   self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
                 },
                 PrefixTarget::HL => {
                     // Read the value from memory at the address pointed to by HL
                     let address = self.registers.get_hl();
-                    let mut value = self.bus.read_byte(address);
-                    self.swap(&mut value);
+                    let value = self.bus.read_byte(address);
+                    let swap_val =self.swap(value);
                     // Write the modified value back to memory
-                    self.bus.write_byte(address, value);
+                    self.bus.write_byte(address, swap_val);
                     self.clock.timer_tick(16);
                     self.program_counter.wrapping_add(2)
                 }
@@ -1782,7 +1956,6 @@ impl CPU {
                 _ => { panic!("TODO: implement other sources") }
               }  
             }
-            _ => { panic!("TODO: implement other load types") }
           }
         },
         Instruction::PUSH(target) => {
@@ -1791,7 +1964,6 @@ impl CPU {
               StackTarget::DE => self.registers.get_de(),
               StackTarget::HL => self.registers.get_hl(),
               StackTarget::AF => self.registers.get_af(),
-              _ => { panic!("Err: ") }
             };
             self.push(value);
             self.clock.timer_tick(16);
@@ -1810,7 +1982,6 @@ impl CPU {
                   self.registers.f.carry = false;
                   self.registers.set_af(result)
                 },
-                _ => { panic!("Err:") }
             };
             self.clock.timer_tick(16);
             self.program_counter.wrapping_add(1)
@@ -1822,7 +1993,6 @@ impl CPU {
               JumpTest::Zero => self.registers.f.zero,
               JumpTest::Carry => self.registers.f.carry,
               JumpTest::Always => true,
-                _ => { panic!("TODO: support more conditions") }
             };
             if jump_condition {
               self.clock.timer_tick(24);
@@ -1838,7 +2008,6 @@ impl CPU {
               JumpTest::Zero => self.registers.f.zero,
               JumpTest::Carry => self.registers.f.carry,
               JumpTest::Always => true,
-              _ => { panic!("Err: ") }
             };
             if jump_condition {
               self.clock.timer_tick(20);
@@ -1854,7 +2023,6 @@ impl CPU {
             JumpTest::Zero => self.registers.f.zero,
             JumpTest::Carry => self.registers.f.carry,
             JumpTest::Always => true,
-            _ => { panic!("Err: ") }
           };
           if jump_condition {
             self.clock.timer_tick(12)
@@ -1950,18 +2118,13 @@ impl CPU {
               self.clock.timer_tick(16);
               self.program_counter.wrapping_add(1)
             },
-            _ =>{self.program_counter.wrapping_add(1)}
           }
         }
         Instruction::DAA() => {
           self.daa()
         },
-        _ => { /* TODO: support more instructions */ self.program_counter}
-        }
-        
-        let instruction_name = instruction_name(instruction);
-        println!("Executed {} {:?}", instruction_name, target);
-
+      }
+      
     }
   fn push(&mut self, val:u16){
     self.stack_pointer = self.stack_pointer.wrapping_sub(1);
@@ -2033,14 +2196,12 @@ impl CPU {
     self.registers.f.carry = false;
   }
 
-  fn sbc(&mut self, value: &mut u8) {
+  fn sbc(&mut self, value: &u8) {
     let a = self.registers.a;
     let carry = if self.registers.f.carry { 1 } else { 0 };
     let (result, did_overflow) = a.overflowing_sub(*value);
     let (result, did_overflow2) = result.overflowing_sub(carry);
-
-    self.registers.a = result;
-    
+    self.registers.a = result;  
     self.registers.f.zero = self.registers.a == 0;
     self.registers.f.subtract = true;
     self.registers.f.half_carry = (a & 0x0F) < (*value & 0x0F) + carry;
@@ -2059,7 +2220,7 @@ impl CPU {
     self.registers.f.carry = did_overflow || did_overflow2;
   }
 
-  fn or(&mut self, value: &mut u8) {
+  fn or(&mut self, value: &u8) {
     self.registers.a |= *value;
     self.registers.f.zero = self.registers.a == 0;
     self.registers.f.subtract = false;
@@ -2075,7 +2236,7 @@ impl CPU {
     self.registers.f.carry = false;
   }
 
-  fn xor(&mut self, value: &mut u8) {
+  fn xor(&mut self, value: &u8) {
     self.registers.a ^= *value;
     self.registers.f.zero = self.registers.a == 0;
     self.registers.f.subtract = false;
@@ -2099,16 +2260,14 @@ impl CPU {
     self.registers.f.carry = self.registers.a < *value;
   }
 
-  fn inc(&mut self, value: &mut u8) {
-    *value = value.wrapping_add(1);
+  fn inc(&mut self, value: &u8) {
     self.registers.f.zero = *value == 0;
     self.registers.f.subtract = false;
     self.registers.f.half_carry = (*value & 0x0F) == 0;
     // Carry flag remains unchanged
   }
 
-  fn dec(&mut self, value: &mut u8) {
-    *value = value.wrapping_sub(1);
+  fn dec(&mut self, value: &u8) {
     self.registers.f.zero = *value == 0;
     self.registers.f.subtract = true;
     self.registers.f.half_carry = (*value & 0x0F) == 0x0F;
@@ -2117,18 +2276,18 @@ impl CPU {
   fn daa(&mut self)->u16{
     if !self.registers.f.half_carry {
       if self.registers.f.carry || self.registers.a > 0x99 {
-        self.registers.a.wrapping_add(0x60);
+        let _ = self.registers.a.wrapping_add(0x60);
         self.registers.f.carry = true;
       }
       if self.registers.f.half_carry || (self.registers.a & 0x0F) > 0x09{
-        self.registers.a.wrapping_add(0x6);
+        let _ = self.registers.a.wrapping_add(0x6);
       }
     }else{
       if self.registers.f.carry {
-        self.registers.a.wrapping_sub(0x60);
+        let _ = self.registers.a.wrapping_sub(0x60);
       }
       if self.registers.f.half_carry {
-        self.registers.a.wrapping_sub(0x6);
+        let _ = self.registers.a.wrapping_sub(0x6);
       }
     }
     self.registers.f.zero = self.registers.a == 0;
@@ -2224,22 +2383,25 @@ impl CPU {
         self.registers.f.half_carry = true;
   }
 
-  fn res(&mut self, bit: u8, value: &mut u8) {
+  fn res(&mut self, bit: u8, value: u8) -> u8{
     // Reset (clear) the specified bit in the value
     let mask = !(1 << bit);
-    *value &= mask;
+    let mut val = value;
+    val &= mask;
+    val
   }
 
-  fn set(&mut self, bit: u8, value: &mut u8) {
+  fn set(&mut self, bit: u8, value: u8)-> u8 {
     // Set (make 1) the specified bit in the value
     let mask = 1 << bit;
-    *value |= mask;
+    let mut val = value;
+    val |= mask;
+    val
   }
 
-  fn srl(&mut self, value: &mut u8) {
+  fn srl(&mut self, value: &u8) {
       // Perform a logical right shift on the value
       let carry = *value & 0x01;
-      *value >>= 1;
       
       // Update flags
       self.registers.f.zero = *value == 0;
@@ -2248,82 +2410,87 @@ impl CPU {
       self.registers.f.carry = carry != 0;
   }
 
-  fn rr(&mut self, value: &mut u8) {
+  fn rr(&mut self, value: u8) -> u8{
       // Calculate the carry bit before the rotation
       let carry = self.registers.f.carry as u8;
 
       // Perform a right rotation on the value with the carry bit
-      *value = (*value >> 1) | (carry << 7);
+      let val = (value >> 1) | (carry << 7);
 
       // Update flags
-      self.registers.f.zero = *value == 0;
+      self.registers.f.zero = value == 0;
       self.registers.f.subtract = false;
       self.registers.f.half_carry = false;
-      self.registers.f.carry = (*value & 0x01) != 0;
+      self.registers.f.carry = (value & 0x01) != 0;
+      val
   }
 
-  fn rl(&mut self, value: &mut u8) {
+  fn rl(&mut self, value: u8) -> u8{
       // Calculate the carry bit before the rotation
-      let carry = ((*value & 0x80) != 0) as u8;
+      let carry = ((value & 0x80) != 0) as u8;
 
       // Perform a left rotation on the value with the carry bit
-      *value = (*value << 1) | self.registers.f.carry as u8;
+      let val = (value << 1) | self.registers.f.carry as u8;
 
       // Update flags
-      self.registers.f.zero = *value == 0;
+      self.registers.f.zero = value == 0;
       self.registers.f.subtract = false;
       self.registers.f.half_carry = false;
       self.registers.f.carry = carry != 0;
+      val
   }
 
-  fn rrc(&mut self, value: &mut u8) {
+  fn rrc(&mut self, value: u8) -> u8 {
       // Calculate the carry bit before the rotation
-      let carry = *value & 0x01;
+      let carry = value & 0x01;
 
       // Perform a right rotation through the carry bit on the value
-      *value = (*value >> 1) | (carry << 7);
+      let val = (value >> 1) | (carry << 7);
 
       // Update flags
-      self.registers.f.zero = *value == 0;
+      self.registers.f.zero = value == 0;
       self.registers.f.subtract = false;
       self.registers.f.half_carry = false;
       self.registers.f.carry = carry != 0;
+      val
   }
 
-  fn rlc(&mut self, value: &mut u8) {
+  fn rlc(&mut self, value: u8) -> u8{
       // Calculate the carry bit before the rotation
-      let carry = (*value & 0x80) >> 7;
+      let carry = (value & 0x80) >> 7;
 
       // Perform a left rotation through the carry bit on the value
-      *value = (*value << 1) | carry;
+      let val = (value << 1) | carry;
 
       // Update flags
-      self.registers.f.zero = *value == 0;
+      self.registers.f.zero = value == 0;
       self.registers.f.subtract = false;
       self.registers.f.half_carry = false;
       self.registers.f.carry = carry != 0;
+      val
   }
 
-  fn sra(&mut self, value: &mut u8) {
+  fn sra(&mut self, value:u8)-> u8 {
       // Calculate the carry bit before the shift
-      let carry = *value & 0x01;
+      let carry = value & 0x01;
 
       // Perform an arithmetic right shift on the value
-      *value = (*value >> 1) | (*value & 0x80);
+      let val = (value >> 1) | (value & 0x80);
 
       // Update flags
-      self.registers.f.zero = *value == 0;
+      self.registers.f.zero = value == 0;
       self.registers.f.subtract = false;
       self.registers.f.half_carry = false;
       self.registers.f.carry = carry != 0;
+      val
   }
 
-  fn sla(&mut self, value: &mut u8) {
+  fn sla(&mut self, value: &u8) {
       // Calculate the carry bit before the shift
-      let carry = (*value & 0x80) >> 7;
+      let carry = (value & 0x80) >> 7;
 
       // Perform an arithmetic left shift on the value
-      *value <<= 1;
+      
 
       // Update flags
       self.registers.f.zero = *value == 0;
@@ -2332,15 +2499,16 @@ impl CPU {
       self.registers.f.carry = carry != 0;
   }
 
-  fn swap(&mut self, value: &mut u8) {
+  fn swap(&mut self, value:u8) -> u8{
       // Perform the swap operation by exchanging the upper and lower nibbles
-      *value = (*value << 4) | (*value >> 4);
+      let val = (value << 4) | (value >> 4);
 
       // Update flags
-      self.registers.f.zero = *value == 0;
+      self.registers.f.zero = value == 0;
       self.registers.f.subtract = false;
       self.registers.f.half_carry = false;
       self.registers.f.carry = false; // Carry flag is always reset
+      val
   }
 
 

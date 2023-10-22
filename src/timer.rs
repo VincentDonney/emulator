@@ -6,7 +6,7 @@ pub struct TimerContext{
 }
 
 impl TimerContext{
-    fn timer_init()->Self{
+    pub fn new()-> TimerContext{
         TimerContext{
             div: 0,
             tima: 0,
@@ -14,6 +14,7 @@ impl TimerContext{
             tac: 0
         }
     }
+
     pub fn timer_tick(&mut self, cycles: u64){
         let tac_bit = (self.tac >> 2) & 0b11;
         let inc_rate = match tac_bit {
@@ -41,7 +42,7 @@ impl TimerContext{
             0xFF04 =>return self.div as u8,
             0xFF05 =>return self.tima,
             0xFF06 =>return self.tma,
-            0xFF04 =>return self.tac, 
+            0xFF07 =>return self.tac, 
             _=> unreachable!("Invalid timer register address: 0x{:04X}", address),
         }
     }
