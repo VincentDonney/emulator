@@ -1958,6 +1958,10 @@ impl CPU {
         },
         _ => { /* TODO: support more instructions */ self.program_counter}
         }
+        
+        let instruction_name = instruction_name(instruction);
+        println!("Executed {} {:?}", instruction_name, target);
+
     }
   fn push(&mut self, val:u16){
     self.stack_pointer = self.stack_pointer.wrapping_sub(1);
@@ -2425,4 +2429,55 @@ fn handle_interrupt(&mut self, addr: u16) -> Result<(), EmulatorError> {
 
     Ok(())
   }
+    //string corresponding to the instruction used
+    fn instruction_name(instruction: &Instruction) -> &str {
+      match instruction {
+          Instruction::ADD(_) => "ADD",
+          Instruction::ADC(_) => "ADC",
+          Instruction::SUB(_) => "SUB",
+          Instruction::SBC(_) => "SBC",
+          Instruction::AND(_) => "AND",
+          Instruction::OR(_) => "OR",
+          Instruction::XOR(_) => "XOR",
+          Instruction::CP(_) => "CP",
+          Instruction::ADDHL(_) => "ADDHL",
+          Instruction::INC(_) => "INC",
+          Instruction::DEC(_) => "DEC",
+          Instruction::RLC(_) => "RLC",
+          Instruction::RRC(_) => "RRC",
+          Instruction::RL(_) => "RL",
+          Instruction::RR(_) => "RR",
+          Instruction::SLA(_) => "SLA",
+          Instruction::SRA(_) => "SRA",
+          Instruction::SWAP(_) => "SWAP",
+          Instruction::SRL(_) => "SRL",
+          Instruction::JP(_, _) => "JP",
+          Instruction::JR(_) => "JR",
+          Instruction::CALL(_) => "CALL",
+          Instruction::RET(_) => "RET",
+          Instruction::LD(_) => "LD",
+          Instruction::LDH(_) => "LDH",
+          Instruction::PUSH(_) => "PUSH",
+          Instruction::POP(_) => "POP",
+          Instruction::NOP() => "NOP",
+          Instruction::BIT(_, _) => "BIT",
+          Instruction::RES(_, _) => "RES",
+          Instruction::SET(_, _) => "SET",
+          Instruction::RLCA() => "RLCA",
+          Instruction::RRCA() => "RRCA",
+          Instruction::RLA() => "RLA",
+          Instruction::RRA() => "RRA",
+          Instruction::DAA() => "DAA",
+          Instruction::CPL() => "CPL",
+          Instruction::SCF() => "SCF",
+          Instruction::CCF() => "CCF",
+          Instruction::RETI() => "RETI",
+          Instruction::HALT() => "HALT",
+          Instruction::STOP() => "STOP",
+          Instruction::DI() => "DI",
+          Instruction::EI() => "EI",
+          Instruction::PREFIX() => "PREFIX",
+          Instruction::RST(_) => "RST",
+      }
+    }
 }
