@@ -1,4 +1,4 @@
-use minifb::{Key, Window, WindowOptions};
+use minifb::{Key, Window};
 use crate::HEIGHT;
 use crate::WIDTH;
 use std::time::{Duration, Instant};

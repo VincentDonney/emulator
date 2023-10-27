@@ -2,36 +2,32 @@ use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 
-pub(crate) fn launch() -> [u8;0xFFFF] {
-// Open the file for reading
-
-    let path = Path::new("snake.gb");
+pub fn launch(file_path: &str, max_size_kb: usize) -> Vec<u8> {
+    // Construct the full file path
+    let path = Path::new(file_path);
     let display = path.display();
-    let mut file = match File::open(&path) {
-        Err(why) => panic!("couldn't open {}: {}", display, why),
-        Ok(file) => file,
-    };
-    let mut buffer = Vec::new();
-    let _ = file.read_to_end(&mut buffer);
     
-    let mut rom: Vec<u8> = Vec::new();
-    //buffer = buffer[100..].to_vec();
-    for (_index,byte) in buffer.iter().enumerate() {
-        let hex_value = format!("{:04X}", byte);
-        if hex_value.len() == 2 {
-            rom.push(0x00); // Add a leading zero for 1-byte values
-        }
-        rom.extend_from_slice(&hex_value.as_bytes());
-    }
-    rom.drain(0..100);
-//in case you cant to check the first value of the rom
-   /* if let Some(first_value) = rom.get(0) {
-        let hex_value = format!("{:02X}", first_value);
-        println!("The first value in the Vec<u8> as hexadecimal is: 0x{}", hex_value);
-    } else {
-        println!("The Vec<u8> is empty.");
-    }
-*/  rom.try_into()
-    .unwrap_or_else(|rom: Vec<u8>| panic!("Expected a Vec of length {} but it was {}", 0xFFFF, rom.len()))
+    // Open the file for reading
+    let mut file = File::open(&path).expect(&format!("Couldn't open {}: {}", display, "Couldn't open the file"));
+    
+    // Read the file content into a Vec<u8>
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer).expect(&format!("Couldn't read {}: {}", display, "Couldn't read the file"));
 
+    // Check if the ROM size exceeds the maximum allowed size
+    let rom_size = buffer.len();
+    if rom_size > max_size_kb * 1024 {
+        panic!(
+            "ROM size exceeds the maximum allowed size ({} KB)",
+            max_size_kb
+        );
+    }
+
+    // Return the ROM data as a Vec<u8>
+    buffer
 }
+
+
+
+
+
