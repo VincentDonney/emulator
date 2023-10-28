@@ -67,7 +67,7 @@ impl CPU {
   }
 
   fn read_next_byte(&self) -> u8 {
-    self.bus.read_byte(self.program_counter).wrapping_add(1)
+    self.bus.read_byte(self.program_counter.wrapping_add(1))
   }
 
   fn read_next_word(&self) -> u16{
@@ -94,7 +94,7 @@ impl CPU {
 
   fn execute(&mut self, instruction: Instruction) ->u16{
     let instruction_name = instruction_name(&instruction);
-    println!("Executing {}", instruction_name);
+    println!("Executing {} PC = {}", instruction_name,self.program_counter);
     match instruction {
       Instruction::ADD(target) => {
         match target {
@@ -1527,6 +1527,36 @@ impl CPU {
                     self.clock.timer_tick(8);
                     self.program_counter.wrapping_add(1)
                   },
+                  LoadByteSource::B => {
+                    self.bus.write_byte(self.registers.get_hl(), self.registers.b);
+                    self.clock.timer_tick(8);
+                    self.program_counter.wrapping_add(1)
+                  },
+                  LoadByteSource::C => {
+                    self.bus.write_byte(self.registers.get_hl(), self.registers.c);
+                    self.clock.timer_tick(8);
+                    self.program_counter.wrapping_add(1)
+                  },
+                  LoadByteSource::D => {
+                    self.bus.write_byte(self.registers.get_hl(), self.registers.d);
+                    self.clock.timer_tick(8);
+                    self.program_counter.wrapping_add(1)
+                  },
+                  LoadByteSource::E => {
+                    self.bus.write_byte(self.registers.get_hl(), self.registers.e);
+                    self.clock.timer_tick(8);
+                    self.program_counter.wrapping_add(1)
+                  },
+                  LoadByteSource::H => {
+                    self.bus.write_byte(self.registers.get_hl(), self.registers.h);
+                    self.clock.timer_tick(8);
+                    self.program_counter.wrapping_add(1)
+                  },
+                  LoadByteSource::L => {
+                    self.bus.write_byte(self.registers.get_hl(), self.registers.l);
+                    self.clock.timer_tick(8);
+                    self.program_counter.wrapping_add(1)
+                  },                 
                   LoadByteSource::D16=>{
                     self.registers.set_hl(self.read_next_word());
                     self.clock.timer_tick(12);
@@ -1543,6 +1573,11 @@ impl CPU {
                     self.clock.timer_tick(12);
                     self.program_counter.wrapping_add(2)
                   }
+                  LoadByteSource::D8 => {
+                    self.bus.write_byte(self.registers.get_hl(), self.read_next_byte());
+                    self.clock.timer_tick(8);
+                    self.program_counter.wrapping_add(1)
+                  },
                   _=>{panic!{"Err:"}}
                 }
               },
@@ -1702,6 +1737,11 @@ impl CPU {
                     self.clock.timer_tick(4);
                     self.program_counter.wrapping_add(1)
                   },
+                  LoadByteSource::D8 =>{
+                    self.registers.a = self.read_next_byte();
+                    self.clock.timer_tick(8);
+                    self.program_counter.wrapping_add(2)
+                  },
                   _ => {self.program_counter.wrapping_add(1)}
                 }
               },
@@ -1746,6 +1786,11 @@ impl CPU {
                     self.registers.c = self.registers.a;
                     self.clock.timer_tick(4);
                     self.program_counter.wrapping_add(1)
+                  },
+                  LoadByteSource::D8 =>{
+                    self.registers.a = self.read_next_byte();
+                    self.clock.timer_tick(8);
+                    self.program_counter.wrapping_add(2)
                   },
                   _ => {self.program_counter.wrapping_add(1)}
                 }
@@ -1792,6 +1837,11 @@ impl CPU {
                     self.clock.timer_tick(4);
                     self.program_counter.wrapping_add(1)
                   },
+                  LoadByteSource::D8 =>{
+                    self.registers.a = self.read_next_byte();
+                    self.clock.timer_tick(8);
+                    self.program_counter.wrapping_add(2)
+                  },
                   _ => {self.program_counter.wrapping_add(1)}
                 }
               },
@@ -1836,6 +1886,11 @@ impl CPU {
                     self.registers.e = self.registers.a;
                     self.clock.timer_tick(4);
                     self.program_counter.wrapping_add(1)
+                  },
+                  LoadByteSource::D8 =>{
+                    self.registers.a = self.read_next_byte();
+                    self.clock.timer_tick(8);
+                    self.program_counter.wrapping_add(2)
                   },
                   _ => {self.program_counter.wrapping_add(1)}
                 }
@@ -1882,6 +1937,11 @@ impl CPU {
                     self.clock.timer_tick(4);
                     self.program_counter.wrapping_add(1)
                   },
+                  LoadByteSource::D8 =>{
+                    self.registers.a = self.read_next_byte();
+                    self.clock.timer_tick(8);
+                    self.program_counter.wrapping_add(2)
+                  },
                   _ => {self.program_counter.wrapping_add(1)}
                 }
               },
@@ -1926,6 +1986,11 @@ impl CPU {
                     self.registers.l = self.registers.a;
                     self.clock.timer_tick(4);
                     self.program_counter.wrapping_add(1)
+                  },
+                  LoadByteSource::D8 =>{
+                    self.registers.a = self.read_next_byte();
+                    self.clock.timer_tick(8);
+                    self.program_counter.wrapping_add(2)
                   },
                   _ => {self.program_counter.wrapping_add(1)}
                 }
@@ -2535,10 +2600,8 @@ impl CPU {
   fn jr(&mut self, should_jump: bool) -> u16 {
     if should_jump {
       let r8 = self.read_next_byte() as i8;
-      let address = (self.program_counter as i16).wrapping_add(r8 as i16);
-      let least_significant_byte = self.bus.read_byte((address as u16).wrapping_add(1)) as u16;
-      let most_significant_byte = self.bus.read_byte((address as u16).wrapping_add(2)) as u16;
-        (most_significant_byte << 8) | least_significant_byte
+      let new_pc = (self.program_counter.wrapping_add(2) as i32 + r8 as i32) as u16;
+      new_pc
     } else {
       self.program_counter.wrapping_add(2)
     }

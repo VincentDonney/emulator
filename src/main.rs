@@ -28,7 +28,7 @@ fn main() {
     */
     let mut cpu = cpu::CPU::new();
     let mut i = 0;
-    while i<20{
+    while i <100{
         cpu.step();
         i = i+1;
     }
