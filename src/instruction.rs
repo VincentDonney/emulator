@@ -92,7 +92,7 @@ pub enum StackTarget{
 }
 
 pub enum LoadByteTarget{
-    A, B, C, D, E, H, L, HLI, HLD, BC, A16, DE, HL, SP, FF00C, A8, D8,D16
+    A, B, C, D, E, H, L, HLI, HLD, BC, A16, DE, HL, SP, FF00C, A8
 }
 
 pub enum LoadByteSource{
@@ -266,7 +266,7 @@ impl Instruction{
             0x7E => Some(Instruction::BIT(7,PrefixTarget::HL)),
             0x7F => Some(Instruction::BIT(7,PrefixTarget::A)),
 
-            0x81 => Some(Instruction::RES(0,PrefixTarget::B)),
+            0x80 => Some(Instruction::RES(0,PrefixTarget::B)),
             0x81 => Some(Instruction::RES(0,PrefixTarget::C)),
             0x82 => Some(Instruction::RES(0,PrefixTarget::D)),
             0x83 => Some(Instruction::RES(0,PrefixTarget::E)),
@@ -409,8 +409,6 @@ impl Instruction{
             0xFD => Some(Instruction::SET(7,PrefixTarget::L)),
             0xFE => Some(Instruction::SET(7,PrefixTarget::HL)),
             0xFF => Some(Instruction::SET(7,PrefixTarget::A)),
-
-          _ => None
         }
     }
 
@@ -418,9 +416,10 @@ impl Instruction{
         match byte {
             0x00 => Some(Instruction::NOP()),
             0x01 => Some(Instruction::LD(LoadType::Byte(LoadByteTarget::BC, LoadByteSource::D16))),
+            0x02 => Some(Instruction::LD(LoadType::Byte(LoadByteTarget::BC, LoadByteSource::A))),
             0x03 => Some(Instruction::INC(IncDecTarget::BC)),
             0x04 => Some(Instruction::INC(IncDecTarget::B)),
-            0x05 => Some(Instruction::DEC(IncDecTarget::BC)),
+            0x05 => Some(Instruction::DEC(IncDecTarget::B)),
             0x06 => Some(Instruction::LD(LoadType::Byte(LoadByteTarget::B, LoadByteSource::D8))),
             0x07 => Some(Instruction::RLCA()),
 
@@ -453,7 +452,7 @@ impl Instruction{
 
             0x20 => Some(Instruction::JR(JumpTest::NotZero)),
             0x21 => Some(Instruction::LD(LoadType::Byte(LoadByteTarget::HL, LoadByteSource::D16))),
-            0x22 => Some(Instruction::LD(LoadType::Byte(LoadByteTarget::HLI, LoadByteSource::D8))),
+            0x22 => Some(Instruction::LD(LoadType::Byte(LoadByteTarget::HLI, LoadByteSource::A))),
             0x23 => Some(Instruction::INC(IncDecTarget::HL)),
             0x24 => Some(Instruction::INC(IncDecTarget::H)),
             0x25 => Some(Instruction::DEC(IncDecTarget::H)),
@@ -473,8 +472,8 @@ impl Instruction{
             0x31 => Some(Instruction::LD(LoadType::Byte(LoadByteTarget::SP, LoadByteSource::D16))),
             0x32 => Some(Instruction::LD(LoadType::Byte(LoadByteTarget::HLD, LoadByteSource::A))),
             0x33 => Some(Instruction::INC(IncDecTarget::SP)),
-            0x34 => Some(Instruction::INC(IncDecTarget::HL)),
-            0x35 => Some(Instruction::DEC(IncDecTarget::HL)),
+            0x34 => Some(Instruction::INC(IncDecTarget::HLP)),
+            0x35 => Some(Instruction::DEC(IncDecTarget::HLP)),
             0x36 => Some(Instruction::LD(LoadType::Byte(LoadByteTarget::HL, LoadByteSource::D8))),
             0x37 => Some(Instruction::SCF()),
 
@@ -559,7 +558,7 @@ impl Instruction{
             0x7E => Some(Instruction::LD(LoadType::Byte(LoadByteTarget::A, LoadByteSource::HL))),
             0x7F => Some(Instruction::LD(LoadType::Byte(LoadByteTarget::A, LoadByteSource::A))),
 
-            0x81 => Some(Instruction::ADD(ArithmeticTarget::B)),
+            0x80 => Some(Instruction::ADD(ArithmeticTarget::B)),
             0x81 => Some(Instruction::ADD(ArithmeticTarget::C)),
             0x82 => Some(Instruction::ADD(ArithmeticTarget::D)),
             0x83 => Some(Instruction::ADD(ArithmeticTarget::E)),
@@ -702,8 +701,6 @@ impl Instruction{
             0xFD => /* INVALID */ None,
             0xFE => Some(Instruction::CP(ArithmeticTarget::D8)),
             0xFF => Some(Instruction::RST(RestartTarget::H38)),
-
-          _ => /* TODO: Add mapping for rest of instructions */ None
         }
     }
 

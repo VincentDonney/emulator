@@ -1955,7 +1955,6 @@ impl CPU {
                 self.clock.timer_tick(8);
                 self.program_counter.wrapping_add(2)
               },
-              _ => { panic!("TODO: implement other sources") }
             }  
           }
         }
@@ -2602,52 +2601,440 @@ impl CPU {
 }
 
 //string corresponding to the instruction used
-fn instruction_name(instruction: &Instruction) -> &str {
+fn instruction_name(instruction: &Instruction) -> String {
   match instruction {
-      Instruction::ADD(_) => "ADD",
-      Instruction::ADC(_) => "ADC",
-      Instruction::SUB(_) => "SUB",
-      Instruction::SBC(_) => "SBC",
-      Instruction::AND(_) => "AND",
-      Instruction::OR(_) => "OR",
-      Instruction::XOR(_) => "XOR",
-      Instruction::CP(_) => "CP",
-      Instruction::ADDHL(_) => "ADDHL",
-      Instruction::INC(_) => "INC",
-      Instruction::DEC(_) => "DEC",
-      Instruction::RLC(_) => "RLC",
-      Instruction::RRC(_) => "RRC",
-      Instruction::RL(_) => "RL",
-      Instruction::RR(_) => "RR",
-      Instruction::SLA(_) => "SLA",
-      Instruction::SRA(_) => "SRA",
-      Instruction::SWAP(_) => "SWAP",
-      Instruction::SRL(_) => "SRL",
-      Instruction::JP(_, _) => "JP",
-      Instruction::JR(_) => "JR",
-      Instruction::CALL(_) => "CALL",
-      Instruction::RET(_) => "RET",
-      Instruction::LD(_) => "LD",
-      Instruction::PUSH(_) => "PUSH",
-      Instruction::POP(_) => "POP",
-      Instruction::NOP() => "NOP",
-      Instruction::BIT(_, _) => "BIT",
-      Instruction::RES(_, _) => "RES",
-      Instruction::SET(_, _) => "SET",
-      Instruction::RLCA() => "RLCA",
-      Instruction::RRCA() => "RRCA",
-      Instruction::RLA() => "RLA",
-      Instruction::RRA() => "RRA",
-      Instruction::DAA() => "DAA",
-      Instruction::CPL() => "CPL",
-      Instruction::SCF() => "SCF",
-      Instruction::CCF() => "CCF",
-      Instruction::RETI() => "RETI",
-      Instruction::HALT() => "HALT",
-      Instruction::STOP() => "STOP",
-      Instruction::DI() => "DI",
-      Instruction::EI() => "EI",
-      Instruction::PREFIX() => "PREFIX",
-      Instruction::RST(_) => "RST",
+      Instruction::ADD(target) => {
+        let str = "ADD ".to_string();
+        match target {
+          ArithmeticTarget::A => str + "A,A",
+          ArithmeticTarget::B => str + "A,B", 
+          ArithmeticTarget::C => str + "A,C",
+          ArithmeticTarget::D => str + "A,D", 
+          ArithmeticTarget::E => str + "A,E", 
+          ArithmeticTarget::H => str + "A,H", 
+          ArithmeticTarget::L => str + "A,L", 
+          ArithmeticTarget::HL => str + "A,(HL)", 
+          ArithmeticTarget::D8 => str + "A,d8", 
+          ArithmeticTarget::SP => str + " SP,r8",
+          _ => "Err".to_string()
+        }
+      },
+      Instruction::ADC(target) => {
+        let str = "ADC ".to_string();
+        match target {
+          ArithmeticTarget::A => str + "A,A",
+          ArithmeticTarget::B => str + "A,B", 
+          ArithmeticTarget::C => str + "A,C",
+          ArithmeticTarget::D => str + "A,D", 
+          ArithmeticTarget::E => str + "A,E", 
+          ArithmeticTarget::H => str + "A,H", 
+          ArithmeticTarget::L => str + "A,L", 
+          ArithmeticTarget::HL => str + "A,(HL)", 
+          ArithmeticTarget::D8 => str + "A,d8", 
+          _ => "Err".to_string()
+        }
+      },
+      Instruction::SUB(target) => {
+        let str = "SUB ".to_string();
+        match target {
+          ArithmeticTarget::A => str + "A",
+          ArithmeticTarget::B => str + "B", 
+          ArithmeticTarget::C => str + "C",
+          ArithmeticTarget::D => str + "D", 
+          ArithmeticTarget::E => str + "E", 
+          ArithmeticTarget::H => str + "H", 
+          ArithmeticTarget::L => str + "L", 
+          ArithmeticTarget::HL => str + "(HL)", 
+          ArithmeticTarget::D8 => str + "d8", 
+          _ => "Err".to_string()
+        }
+      },
+      Instruction::SBC(target) => {
+        let str = "SBC ".to_string();
+        match target {
+          ArithmeticTarget::A => str + "A,A",
+          ArithmeticTarget::B => str + "A,B", 
+          ArithmeticTarget::C => str + "A,C",
+          ArithmeticTarget::D => str + "A,D", 
+          ArithmeticTarget::E => str + "A,E", 
+          ArithmeticTarget::H => str + "A,H", 
+          ArithmeticTarget::L => str + "A,L", 
+          ArithmeticTarget::HL => str + "A,(HL)", 
+          ArithmeticTarget::D8 => str + "A,d8",
+          _ => "Err".to_string()
+        }
+      },
+      Instruction::AND(target) => {
+        let str = "AND ".to_string();
+        match target {
+          ArithmeticTarget::A => str + "A",
+          ArithmeticTarget::B => str + "B", 
+          ArithmeticTarget::C => str + "C",
+          ArithmeticTarget::D => str + "D", 
+          ArithmeticTarget::E => str + "E", 
+          ArithmeticTarget::H => str + "H", 
+          ArithmeticTarget::L => str + "L", 
+          ArithmeticTarget::HL => str + "(HL)", 
+          ArithmeticTarget::D8 => str + "d8",
+          _ => "Err".to_string()
+        }
+      },
+      Instruction::OR(target) => {
+        let str = "OR ".to_string();
+        match target {
+          ArithmeticTarget::A => str + "A",
+          ArithmeticTarget::B => str + "B", 
+          ArithmeticTarget::C => str + "C",
+          ArithmeticTarget::D => str + "D", 
+          ArithmeticTarget::E => str + "E", 
+          ArithmeticTarget::H => str + "H", 
+          ArithmeticTarget::L => str + "L", 
+          ArithmeticTarget::HL => str + "(HL)", 
+          ArithmeticTarget::D8 => str + "d8",
+          _ => "Err".to_string()
+        }
+      },
+      Instruction::XOR(target) => {
+        let str = "XOR ".to_string();
+        match target {
+          ArithmeticTarget::A => str + "A",
+          ArithmeticTarget::B => str + "B", 
+          ArithmeticTarget::C => str + "C",
+          ArithmeticTarget::D => str + "D", 
+          ArithmeticTarget::E => str + "E", 
+          ArithmeticTarget::H => str + "H", 
+          ArithmeticTarget::L => str + "L", 
+          ArithmeticTarget::HL => str + "(HL)", 
+          ArithmeticTarget::D8 => str + "d8",
+          _ => "Err".to_string()
+        }
+      },
+      Instruction::CP(target) => {
+        let str = "CP ".to_string();
+        match target {
+          ArithmeticTarget::A => str + "A",
+          ArithmeticTarget::B => str + "B", 
+          ArithmeticTarget::C => str + "C",
+          ArithmeticTarget::D => str + "D", 
+          ArithmeticTarget::E => str + "E", 
+          ArithmeticTarget::H => str + "H", 
+          ArithmeticTarget::L => str + "L", 
+          ArithmeticTarget::HL => str + "(HL)", 
+          ArithmeticTarget::D8 => str + "d8",
+          _ => "Err".to_string()
+        }
+      },
+      Instruction::ADDHL(target) => {
+        let str = "ADD ".to_string();
+        match target {
+          ArithmeticTarget::BC => str + "HL,BC",
+          ArithmeticTarget::DE => str + "HL,DE", 
+          ArithmeticTarget::HL => str + "HL,HL",
+          ArithmeticTarget::SP => str + "HL,SP", 
+          _ => "Err".to_string()
+        }
+      },
+      Instruction::INC(target) => {
+        let str = "INC ".to_string();
+        match target {
+          IncDecTarget::A => str + "A",
+          IncDecTarget::B => str + "B",
+          IncDecTarget::C => str + "C",
+          IncDecTarget::D => str + "D",
+          IncDecTarget::E => str + "E",
+          IncDecTarget::H => str + "H",
+          IncDecTarget::L => str + "L",
+          IncDecTarget::HLP => str + "(HL)",
+          IncDecTarget::BC => str + "BC",
+          IncDecTarget::DE => str + "DE",
+          IncDecTarget::HL => str + "HL",
+          IncDecTarget::SP => str + "SP"
+        }
+      },
+      Instruction::DEC(target) => {
+        let str = "DEC ".to_string();
+        match target {
+          IncDecTarget::A => str + "A",
+          IncDecTarget::B => str + "B",
+          IncDecTarget::C => str + "C",
+          IncDecTarget::D => str + "D",
+          IncDecTarget::E => str + "E",
+          IncDecTarget::H => str + "H",
+          IncDecTarget::L => str + "L",
+          IncDecTarget::HLP => str + "(HL)",
+          IncDecTarget::BC => str + "BC",
+          IncDecTarget::DE => str + "DE",
+          IncDecTarget::HL => str + "HL",
+          IncDecTarget::SP => str + "SP"
+        }
+      },
+      Instruction::RLC(target) => {
+        let str = "RLC ".to_string();
+        match target {
+          PrefixTarget::A => str + "A",
+          PrefixTarget::B => str + "B",
+          PrefixTarget::C => str + "C",
+          PrefixTarget::D => str + "D",
+          PrefixTarget::E => str + "E",
+          PrefixTarget::H => str + "H",
+          PrefixTarget::L => str + "L",
+          PrefixTarget::HL => str + "(HL)",
+        }
+      },
+      Instruction::RRC(target) => {
+        let str = "RRC ".to_string();
+        match target {
+          PrefixTarget::A => str + "A",
+          PrefixTarget::B => str + "B",
+          PrefixTarget::C => str + "C",
+          PrefixTarget::D => str + "D",
+          PrefixTarget::E => str + "E",
+          PrefixTarget::H => str + "H",
+          PrefixTarget::L => str + "L",
+          PrefixTarget::HL => str + "(HL)",
+        }
+      },
+      Instruction::RL(target) => {
+        let str = "RL ".to_string();
+        match target {
+          PrefixTarget::A => str + "A",
+          PrefixTarget::B => str + "B",
+          PrefixTarget::C => str + "C",
+          PrefixTarget::D => str + "D",
+          PrefixTarget::E => str + "E",
+          PrefixTarget::H => str + "H",
+          PrefixTarget::L => str + "L",
+          PrefixTarget::HL => str + "(HL)",
+        }
+      },
+      Instruction::RR(target) => {
+        let str = "RR ".to_string();
+        match target {
+          PrefixTarget::A => str + "A",
+          PrefixTarget::B => str + "B",
+          PrefixTarget::C => str + "C",
+          PrefixTarget::D => str + "D",
+          PrefixTarget::E => str + "E",
+          PrefixTarget::H => str + "H",
+          PrefixTarget::L => str + "L",
+          PrefixTarget::HL => str + "(HL)",
+        }
+      },
+      Instruction::SLA(target) => {
+        let str = "SLA ".to_string();
+        match target {
+          PrefixTarget::A => str + "A",
+          PrefixTarget::B => str + "B",
+          PrefixTarget::C => str + "C",
+          PrefixTarget::D => str + "D",
+          PrefixTarget::E => str + "E",
+          PrefixTarget::H => str + "H",
+          PrefixTarget::L => str + "L",
+          PrefixTarget::HL => str + "(HL)",
+        }
+      },
+      Instruction::SRA(target) => {
+        let str = "SRA ".to_string();
+        match target {
+          PrefixTarget::A => str + "A",
+          PrefixTarget::B => str + "B",
+          PrefixTarget::C => str + "C",
+          PrefixTarget::D => str + "D",
+          PrefixTarget::E => str + "E",
+          PrefixTarget::H => str + "H",
+          PrefixTarget::L => str + "L",
+          PrefixTarget::HL => str + "(HL)",
+        }
+      },
+      Instruction::SWAP(target) => {
+        let str = "SWAP ".to_string();
+        match target {
+          PrefixTarget::A => str + "A",
+          PrefixTarget::B => str + "B",
+          PrefixTarget::C => str + "C",
+          PrefixTarget::D => str + "D",
+          PrefixTarget::E => str + "E",
+          PrefixTarget::H => str + "H",
+          PrefixTarget::L => str + "L",
+          PrefixTarget::HL => str + "(HL)",
+        }
+      },
+      Instruction::SRL(target) => {
+        let str = "SRL ".to_string();
+        match target {
+          PrefixTarget::A => str + "A",
+          PrefixTarget::B => str + "B",
+          PrefixTarget::C => str + "C",
+          PrefixTarget::D => str + "D",
+          PrefixTarget::E => str + "E",
+          PrefixTarget::H => str + "H",
+          PrefixTarget::L => str + "L",
+          PrefixTarget::HL => str + "(HL)",
+        }
+      },
+      Instruction::JP(test, target) => {
+        let str = "JP ".to_string();
+        match target {
+          JumpTarget::A16 => {
+            match test {
+              JumpTest::Always => str + "a16",
+              JumpTest::Carry => str + "C,a16",
+              JumpTest::NotCarry => str + "NC,a16",
+              JumpTest::NotZero => str + "NZ,a16",
+              JumpTest::Zero => str + "Z,a16"
+            }
+          },
+          JumpTarget::HL => str + "(HL)"
+        }
+      },
+      Instruction::JR(test) => {
+        let str = "JR ".to_string();
+        match test {
+          JumpTest::Always => str + "r8",
+          JumpTest::Carry => str + "C,r8",
+          JumpTest::NotCarry => str + "NC,r8",
+          JumpTest::NotZero => str + "NZ,r8",
+          JumpTest::Zero => str + "Z,r8"
+        }
+      },
+      Instruction::CALL(test) => {
+        let str = "CALL ".to_string();
+        match test {
+          JumpTest::Always => str + "a16",
+          JumpTest::Carry => str + "C,a16",
+          JumpTest::NotCarry => str + "NC,a16",
+          JumpTest::NotZero => str + "NZ,a16",
+          JumpTest::Zero => str + "Z,a16"
+        }
+      },
+      Instruction::RET(test) => {
+        let str = "RET ".to_string();
+        match test {
+          JumpTest::Always => str,
+          JumpTest::Carry => str + "C",
+          JumpTest::NotCarry => str + "NC",
+          JumpTest::NotZero => str + "NZ",
+          JumpTest::Zero => str + "Z"
+        }
+      },
+      Instruction::LD(load_type) => {
+        let mut str = "LD ".to_string();
+        match load_type {
+          LoadType::Byte(target, source) => {
+            match target {
+              LoadByteTarget::A =>{str += "A,";},
+              LoadByteTarget::A16 => {str += "(a16),";},
+              LoadByteTarget::A8 => {str = "LDH (a8),".to_string();},
+              LoadByteTarget::B => {str += "B,";},
+              LoadByteTarget::C => {str += "C,";},
+              LoadByteTarget::D => {str += "D,";},
+              LoadByteTarget::E => {str += "E,";},
+              LoadByteTarget::H => {str += "H,";},
+              LoadByteTarget::L => {str += "L,";},
+              LoadByteTarget::HLI => {str += "(HL+),";},
+              LoadByteTarget::HLD => {str += "(HL-),";},
+              LoadByteTarget::BC => {str += "(BC),";},
+              LoadByteTarget::DE => {str += "(DE),";},
+              LoadByteTarget::HL => {str += "HL,";},
+              LoadByteTarget::SP => {str += "SP,";},
+              LoadByteTarget::FF00C => {str += "(C),";},
+            }; 
+            match source {
+              LoadByteSource::A =>{str += "A";},
+              LoadByteSource::A16 => {str += "(a16)";},
+              LoadByteSource::A8 => {str = "LDH A,(a8)".to_string();},
+              LoadByteSource::B => {str += "B";},
+              LoadByteSource::C => {str += "C";},
+              LoadByteSource::D => {str += "D";},
+              LoadByteSource::E => {str += "E";},
+              LoadByteSource::H => {str += "H";},
+              LoadByteSource::L => {str += "L";},
+              LoadByteSource::HLI => {str += "(HL+)";},
+              LoadByteSource::HLD => {str += "(HL-)";},
+              LoadByteSource::BC => {str += "(BC)";},
+              LoadByteSource::DE => {str += "(DE)";},
+              LoadByteSource::HL => {str += "(HL)";},
+              LoadByteSource::SP => {str += "SP";},
+              LoadByteSource::FF00C => {str += "(C)";},
+              LoadByteSource::D8 => {str += "d8";},
+              LoadByteSource::D16 => {str += "d16";},           
+            };
+          } 
+        };
+        str  
+      },
+      Instruction::PUSH(target) => {
+        let str = "PUSH ".to_string();
+        match target {
+          StackTarget::AF => str + "AF",
+          StackTarget::BC => str + "BC",
+          StackTarget::DE => str + "DE",
+          StackTarget::HL => str + "HL"
+        }
+      },
+      Instruction::POP(target) => {
+        let str = "PUSH ".to_string();
+        match target {
+          StackTarget::AF => str + "AF",
+          StackTarget::BC => str + "BC",
+          StackTarget::DE => str + "DE",
+          StackTarget::HL => str + "HL"
+        }
+      },
+      Instruction::NOP() => "NOP".to_string(),
+      Instruction::BIT(bit, target) => {
+        let str = "BIT ".to_string() + &bit.to_string();
+        match target {
+          PrefixTarget::A => str + "A",
+          PrefixTarget::B => str + "B",
+          PrefixTarget::C => str + "C",
+          PrefixTarget::D => str + "D",
+          PrefixTarget::E => str + "E",
+          PrefixTarget::H => str + "H",
+          PrefixTarget::L => str + "L",
+          PrefixTarget::HL => str + "(HL)",
+        }
+      },
+      Instruction::RES(bit, target) =>  {
+        let str = "RES ".to_string() + &bit.to_string();
+        match target {
+          PrefixTarget::A => str + "A",
+          PrefixTarget::B => str + "B",
+          PrefixTarget::C => str + "C",
+          PrefixTarget::D => str + "D",
+          PrefixTarget::E => str + "E",
+          PrefixTarget::H => str + "H",
+          PrefixTarget::L => str + "L",
+          PrefixTarget::HL => str + "(HL)",
+        }
+      },
+      Instruction::SET(bit, target) =>  {
+        let str = "SET ".to_string() + &bit.to_string();
+        match target {
+          PrefixTarget::A => str + "A",
+          PrefixTarget::B => str + "B",
+          PrefixTarget::C => str + "C",
+          PrefixTarget::D => str + "D",
+          PrefixTarget::E => str + "E",
+          PrefixTarget::H => str + "H",
+          PrefixTarget::L => str + "L",
+          PrefixTarget::HL => str + "(HL)",
+        }
+      },
+      Instruction::RLCA() => "RLCA".to_string(),
+      Instruction::RRCA() => "RRCA".to_string(),
+      Instruction::RLA() => "RLA".to_string(),
+      Instruction::RRA() => "RRA".to_string(),
+      Instruction::DAA() => "DAA".to_string(),
+      Instruction::CPL() => "CPL".to_string(),
+      Instruction::SCF() => "SCF".to_string(),
+      Instruction::CCF() => "CCF".to_string(),
+      Instruction::RETI() => "RETI".to_string(),
+      Instruction::HALT() => "HALT".to_string(),
+      Instruction::STOP() => "STOP".to_string(),
+      Instruction::DI() => "DI".to_string(),
+      Instruction::EI() => "EI".to_string(),
+      Instruction::PREFIX() => "PREFIX".to_string(),
+      Instruction::RST(_) => "RST".to_string(),
   }
 }
