@@ -86,7 +86,7 @@ impl CPU {
     let next_pc = if let Some(instruction) = Instruction::from_byte(instruction_byte,prefixed) {
       self.execute(instruction)
     } else {
-      panic!("Unkown instruction found for: 0x{:x}", instruction_byte);
+      panic!("Unkown instruction found for: {}", instruction_byte);
     };
     self.program_counter = next_pc;
   }
@@ -94,7 +94,7 @@ impl CPU {
 
   fn execute(&mut self, instruction: Instruction) ->u16{
     let instruction_name = instruction_name(&instruction);
-    println!("Executing {} PC = {}", instruction_name,self.program_counter);
+    println!("Executing {} PC = {:#06x}", instruction_name,self.program_counter);
     match instruction {
       Instruction::ADD(target) => {
         match target {
