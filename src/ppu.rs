@@ -16,7 +16,9 @@ struct PPU {
     video_buffer:[u8;160*144],
     oam:[u8;0xA0],
     vram:[u8;0x2000],
-    tileset:[u8;256*256]
+    bg_tileset:[u8;256*256],
+    win_tileset:[u8;256*256],
+
 }
 
 impl PPU{
@@ -65,7 +67,7 @@ impl PPU{
             //If WIN Enabled
             if self.get_bit(self.lcdc, 5) != 0 {
                 if self.pixel_in_window(x, y){
-                    todo!();
+                    return self.pixel_from_window(x, y)
                 }else{
                     return self.pixel_from_background(x,y)
                 }
@@ -75,7 +77,6 @@ impl PPU{
         }else {
             return 0;
         }
-        return 0;
     }
 
     fn pixel_in_window(&self,x:u8,y:u8)->bool{
@@ -87,10 +88,17 @@ impl PPU{
         (signed_x >= signed_wx) && (signed_y >= signed_wy)
     }
 
+    fn pixel_from_window(&self,x:u8,y:u8)->u8{
+        let x = x - (self.wx - 7);
+        let y = y - self.wy;
+        self.win_tileset[(x+256*y) as usize]
+    }
+
     fn pixel_from_background(&self,x:u8,y:u8)->u8{
         let x = (x + self.scx)%256;
         let y = (y + self.scy)%256;
-        self.tileset[(x+256*y) as usize]
+        self.bg_tileset[(x+256*y) as usize]
+        
     }
 
     fn background_tilesets(&self)->[u8;256*256]{
