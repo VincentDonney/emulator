@@ -101,8 +101,12 @@ impl PPU{
         
     }
 
-    fn background_tilesets(&self)->[u8;256*256]{
-        let tilemap = self.tile_map();
+    fn tilesets(&self,set_type:&str)->[u8;256*256]{
+        let bit = match set_type{
+            "bg" => 3,
+            "win" => 6
+        };
+        let tilemap = self.tile_map(bit);
         let mut tile_line = 0;
         let mut background = [0u8;256*256];
         for i in tilemap.0..tilemap.1 {
@@ -147,8 +151,8 @@ impl PPU{
         visible_sprites
     }
 
-    fn tile_map(&self)->(u16,u16){
-        match self.get_bit(self.lcdc, 3){
+    fn tile_map(&self,bit:u8)->(u16,u16){
+        match self.get_bit(self.lcdc, bit){
             0 =>(0x9800,0x9BFF),
             1 =>(0x9C00,0x9FFF)
         }
