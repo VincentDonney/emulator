@@ -1,5 +1,3 @@
-
-
 const TILE_SIZE: usize = 16;
 const TILE_DATA_ADDRESS_RANGE: std::ops::Range<usize> = 0x8000..0x9800;
 const TILE_DATA_ADDRESS_RANGE_8800: std::ops::Range<usize> = 0x8800..0x9000;

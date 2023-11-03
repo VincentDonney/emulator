@@ -1,6 +1,6 @@
 use crate::tile::extract_tile;
 
-struct PPU {
+pub(crate) struct PPU {
     lcdc:u8,
     lcds:u8,
     scy:u8,
@@ -8,9 +8,9 @@ struct PPU {
     ly:u8,
     lyc:u8,
     dma:u8,
-    bg_palette:[u32;4],
-    obp0:[u32;4],
-    obp1:[u32;4],
+    bg_palette:u8,
+    obp0:u8,
+    obp1:u8,
     wy:u8,
     wx:u8,
     video_buffer:[u8;160*144],
@@ -23,35 +23,89 @@ struct PPU {
 
 impl PPU{
 
+    pub fn new()->PPU{
+        PPU{
+            lcdc: 0,
+            lcds: 0,
+            scy: 0,
+            scx: 0,
+            ly: 0,
+            lyc: 0x00,
+            dma: 0,
+            bg_palette: 0xFF,
+            obp0: 0xFF,
+            obp1: 0xFF,
+            wy: 0,
+            wx: 0,
+            video_buffer: [0u8;160*144],
+            oam: [0u8;0xA0],
+            vram: [0u8;0x2000],
+            bg_tileset: [0u8;256*256],
+            win_tileset: [0u8;256*256],
+        }
+    }
+
     fn ppu_tick(&self){
+
+        self.render_line();
         self.ly+= 1;
-        //Match mode
+        
     }
 
     fn get_bit(&self,byte:u8,bit:u8)->u8{
         byte >> bit & 1
     }
 
-    fn read_oam(&self,mut address:u16)->u8{
-        if address>=0xFE00{
-            address-=0xFE00;
-        }
-        self.oam[address as usize]
+    pub fn oam_read(&self,mut address:u16)->u8{
+        self.oam[(address &0xFF) as usize]
     }
 
-    fn write_oam(&self,mut address:u16,val:u8){
-        if address>=0xFE00{
-            address-=0xFE00;
-        }
-        self.oam[address as usize] = val;
+    pub fn oam_write(&self,mut address:u16,val:u8){
+        self.oam[(address & 0xFF) as usize] = val;
     }
 
-    fn vram_write(&self,address:u16,value:u8){
-        self.vram[address as usize] = value;
+    pub fn vram_write(&self,address:u16,value:u8){
+        self.vram[(address & 0x1FFF) as usize] = value;
     }
     
-    fn vram_read(&self,address:u16) -> u8{
-        self.vram[address as usize]
+    pub fn vram_read(&self,address:u16) -> u8{
+        self.vram[(address & 0x1FFF) as usize]
+    }
+
+    pub fn lcd_read(&self,address:u16)->u8{
+        match address{
+            0xFF40 => self.lcdc,
+            0xFF41 => self.lcds,
+            0xFF42 => self.scy,
+            0xFF43 => self.scx,
+            0xFF44 => self.ly,
+            0xFF45 => self.lyc,
+            0xFF46 => self.dma,
+            0xFF47 => self.bg_palette,
+            0xFF48 => self.obp0,
+            0xFF49 => self.obp1,
+            0xFF4A => self.wy,
+            0xFF4B => self.wx,
+
+        }
+    }
+
+    pub fn lcd_write(&self,address:u16,val:u8){
+        match address{
+            0xFF40 => self.lcdc = val,
+            0xFF41 => self.lcds = val,
+            0xFF42 => self.scy = val,
+            0xFF43 => self.scx = val,
+            0xFF44 => self.ly = val,
+            0xFF45 => self.lyc = val,
+            0xFF46 => self.dma = val,
+            0xFF47 => self.bg_palette = val,
+            0xFF48 => self.obp0 = val,
+            0xFF49 => self.obp1 = val,
+            0xFF4A => self.wy = val,
+            0xFF4B => self.wx = val,
+
+        }
     }
 
     fn render_line(&self){
@@ -59,6 +113,7 @@ impl PPU{
         for x in 0..160 {
             self.video_buffer[(x+160*y) as usize] = self.render_pixel(x,y);
         }
+        self.render_sprites();
         
     }
     fn render_pixel(&self,x:u8,y:u8)->u8{
@@ -67,15 +122,15 @@ impl PPU{
             //If WIN Enabled
             if self.get_bit(self.lcdc, 5) != 0 {
                 if self.pixel_in_window(x, y){
-                    return self.pixel_from_window(x, y)
+                    self.pixel_from_window(x, y)
                 }else{
-                    return self.pixel_from_background(x,y)
+                    self.pixel_from_background(x,y)
                 }
             }else{
-                return self.pixel_from_background(x,y)
+                self.pixel_from_background(x,y)
             }
         }else {
-            return 0;
+            0
         }
     }
 
@@ -110,7 +165,7 @@ impl PPU{
         let mut tile_line = 0;
         let mut background = [0u8;256*256];
         for i in tilemap.0..tilemap.1 {
-            let tile_index =  self.vram_read(i - 0x8000);
+            let tile_index =  self.vram_read(i);
             let tile_address = self.addressing_mode(tile_index);
             let mut tile = [0u8;16];
             for j in 0..16 {
@@ -123,7 +178,6 @@ impl PPU{
             }
             for k in 0..8 {
                 for l in 0..8 {
-                    //Use palettes
                     background[(256*tile_line+256*k+l+8*i%32) as usize] = tile_pixels[k as usize][l as usize];
                 }
             }
@@ -132,24 +186,73 @@ impl PPU{
         background        
     }
 
-    fn render_sprites(&self)->[u8;10]{
-        let mut i = 0;
-        let mut visible_sprites =[0;10];
-        for sprite in self.oam {
-            
-            let h = match self.get_bit(self.lcdc,2){
-                0 => 8,
-                1 => 16
-            };
-            let y = self.get_bit(sprite, 0);
-            let x = self.get_bit(sprite, 1);
-            if (x != 0) && (self.ly + 16 >= y) && (self.ly < y + h){
-                visible_sprites[i] = sprite;
-                i+=1;
-            }   
-        }
-        visible_sprites
+    fn is_visible(&self,x:u8,y:u8)->bool{
+        let h = match self.get_bit(self.lcdc,2){
+            0 => 8,
+            1 => 16
+        };
+        (x != 0) && (self.ly + 16 >= y) && (self.ly < y + h)
     }
+        
+    fn render_sprites(&self){
+        if self.get_bit(self.lcdc, 1) == 1 {
+            for i in 0..40 {
+                let y = self.oam[i];
+                let x = self.oam[i+1];
+                let tile_index = self.oam[i+2];
+                let tile_address = 0x0 + (tile_index as u16) * 16;
+                let flags = self.oam[i+3];
+                let ly = self.ly;
+                let priority =self.get_bit(flags, 7);
+                if self.is_visible(x, y){
+                    match self.get_bit(self.lcdc, 2){
+                        0 =>{
+                            let mut tile = [0u8;16];
+                            for j in 0..16 {
+                                tile[j as usize] = self.vram_read(tile_address+j);
+                            }
+                            let tile_pixels = extract_tile(tile);
+                            
+                            for k in (x-8)..x{
+                                if (priority == 0) || (priority == 1 && self.video_buffer[(ly*160+k) as usize] == 0){
+                                    self.video_buffer[(ly*160+k) as usize] = tile_pixels[k as usize][(ly-y+16) as usize];
+                                }
+                            }
+                        },
+                        1 =>{
+                            let mut tile1 = [0u8;16];
+                            let mut tile2 = [0u8;16];
+                            for j in 0..16 {
+                                tile1[j as usize] = self.vram_read(tile_address+j);
+                            }
+                            let tile1_pixels = extract_tile(tile1);
+                            for j in 0..16 {
+                                tile2[j as usize] = self.vram_read(tile_address+16+j);
+                            }
+                            let tile2_pixels = extract_tile(tile2);
+                            let tile_pixels = self.double_tile(tile1_pixels, tile2_pixels);
+
+                            for k in (x-8)..x{
+                                if (priority == 0) || (priority == 1 && self.video_buffer[(ly*160+k) as usize] == 0){
+                                    self.video_buffer[(ly*160+k) as usize] = tile_pixels[k as usize][(ly-y+16) as usize];
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } 
+    }
+
+    fn double_tile(&self,tile1:[[u8; 8]; 8],tile2:[[u8; 8]; 8])->[[u8; 8]; 16]{
+        let mut tile = [[0u8; 8]; 16];
+        for i in 0..8 {
+            tile[i] = tile1[i];
+            tile[i + 8] = tile2[i];
+        }
+        tile
+    }
+    
 
     fn tile_map(&self,bit:u8)->(u16,u16){
         match self.get_bit(self.lcdc, bit){

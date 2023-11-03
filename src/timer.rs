@@ -1,13 +1,13 @@
-pub struct TimerContext{
+pub struct Timer{
     div:u16,
     tima:u8,
     tma:u8,
     tac:u8
 }
 
-impl TimerContext{
-    pub fn new()-> TimerContext{
-        TimerContext{
+impl Timer{
+    pub fn new()-> Timer{
+        Timer{
             div: 0,
             tima: 0,
             tma: 0,

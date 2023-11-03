@@ -1,12 +1,13 @@
 use crate::instruction::*;
 use crate::launch;
+use crate::ppu;
 use crate::register;
 use crate::timer::*;
 pub struct CPU{
     registers:register::Registers,
     program_counter:u16,
     stack_pointer:u16,
-    clock:TimerContext,
+    clock:Timer,
     bus:MemoryBus,
     pub is_halted:bool,
     ime:bool,
@@ -14,7 +15,8 @@ pub struct CPU{
     if_reg:u8,
 }
 struct MemoryBus{
-    mem: Vec<u8>
+    mem: Vec<u8>,
+    ppu:ppu::PPU
 }
 
 impl MemoryBus {
@@ -23,6 +25,43 @@ impl MemoryBus {
   }
   fn write_byte(&mut self, address : u16, byte:u8){
     self.mem[address as usize] = byte; 
+  }
+
+
+  pub fn bus_read(&self,address:u16)->u8{
+    match address{
+      0x0000..=0x7FFF => self.read_byte(address), //ROM
+      0x8000..=0x9FFF => self.ppu.vram_read(address), //VRAM
+      0xA000..=0xBFFF => self.read_byte(address), //RAM
+      0xC000..=0xCFFF =>,//WRAM
+      0xD000..=0xDFFF=>,//WRAM
+      0xE000..=0xFDFF=>,//ECHO RAM
+      0xFE00..=0xFE9F=>self.ppu.oam_write(address, val),//OAM
+      0xFEA0..=0xFEFF=>return,//Not usable
+      0xFF00 =>,//Joypad 
+      0xFF04..=0xFF07 =>, //Timer
+      0xFF40..=0xFF4B => self.ppu.lcd_read(address),
+      0xFF80..=0xFFFE=>,//HRAM
+      0xFFFF =>//interrupt enable
+    }
+  }
+
+  fn bus_write(&self,address:u16,val:u8){
+    match address{
+      0x0000..=0x7FFF => return, //ROM but rom only => no write 
+      0x8000..=0x9FFF => self.ppu.vram_write(address,val), //VRAM
+      0xA000..=0xBFFF => , //RAM
+      0xC000..=0xCFFF =>,//WRAM
+      0xD000..=0xDFFF=>,//WRAM
+      0xE000..=0xFDFF=>,//ECHO RAM
+      0xFE00..=0xFE9F=>,//OAM
+      0xFEA0..=0xFEFF=>return,//Not usable
+      0xFF00 =>,//Joypad 
+      0xFF04..=0xFF07 =>, //Timer
+      0xFF40..=0xFF4B => self.ppu.lcd_write(address,val),
+      0xFF80..=0xFFFE=>,//HRAM
+      0xFFFF =>//interrupt enable
+    }
   }
 }
 
@@ -51,14 +90,15 @@ impl CPU {
       l:0x4D,
     };
     let mem_bus = MemoryBus {
-      mem:launch::launch("./tetris.gb", 64)
+      mem:launch::launch("./tetris.gb", 64),
+      ppu:ppu::PPU::new()
     };
     CPU {
       registers: regs,
       program_counter: 0x0100,
       stack_pointer: 0xFFFE,
       is_halted: false,
-      clock: TimerContext::new(),
+      clock: Timer::new(),
       bus: mem_bus,
       ime: true,
       ie: 0,
