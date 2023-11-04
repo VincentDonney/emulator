@@ -1,18 +1,17 @@
 use crate::tile::extract_tile;
 
 pub(crate) struct PPU {
-    lcdc:u8,
-    lcds:u8,
-    scy:u8,
-    scx:u8,
-    ly:u8,
-    lyc:u8,
-    dma:u8,
-    bg_palette:u8,
-    obp0:u8,
-    obp1:u8,
-    wy:u8,
-    wx:u8,
+    pub lcdc:u8,
+    pub lcds:u8,
+    pub scy:u8,
+    pub scx:u8,
+    pub ly:u8,
+    pub lyc:u8,
+    pub bg_palette:u8,
+    pub obp0:u8,
+    pub obp1:u8,
+    pub wy:u8,
+    pub wx:u8,
     video_buffer:[u8;160*144],
     oam:[u8;0xA0],
     vram:[u8;0x2000],
@@ -31,7 +30,6 @@ impl PPU{
             scx: 0,
             ly: 0,
             lyc: 0x00,
-            dma: 0,
             bg_palette: 0xFF,
             obp0: 0xFF,
             obp1: 0xFF,
@@ -70,42 +68,6 @@ impl PPU{
     
     pub fn vram_read(&self,address:u16) -> u8{
         self.vram[(address & 0x1FFF) as usize]
-    }
-
-    pub fn lcd_read(&self,address:u16)->u8{
-        match address{
-            0xFF40 => self.lcdc,
-            0xFF41 => self.lcds,
-            0xFF42 => self.scy,
-            0xFF43 => self.scx,
-            0xFF44 => self.ly,
-            0xFF45 => self.lyc,
-            0xFF46 => self.dma,
-            0xFF47 => self.bg_palette,
-            0xFF48 => self.obp0,
-            0xFF49 => self.obp1,
-            0xFF4A => self.wy,
-            0xFF4B => self.wx,
-            _ =>panic!()
-        }
-    }
-
-    pub fn lcd_write(&mut self,address:u16,val:u8){
-        match address{
-            0xFF40 => self.lcdc = val,
-            0xFF41 => self.lcds = val,
-            0xFF42 => self.scy = val,
-            0xFF43 => self.scx = val,
-            0xFF44 => self.ly = val,
-            0xFF45 => self.lyc = val,
-            0xFF46 => self.dma = val,
-            0xFF47 => self.bg_palette = val,
-            0xFF48 => self.obp0 = val,
-            0xFF49 => self.obp1 = val,
-            0xFF4A => self.wy = val,
-            0xFF4B => self.wx = val,
-            _ =>panic!()
-        }
     }
 
     fn render_line(&mut self){

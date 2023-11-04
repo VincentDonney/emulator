@@ -59,7 +59,7 @@ impl MemoryBus {
       },//Not usable
       0xFF00 =>todo!(),//Joypad 
       0xFF04..=0xFF07 =>todo!(), //Timer
-      0xFF40..=0xFF4B => self.ppu.lcd_read(address),
+      0xFF40..=0xFF4B => self.lcd_read(address),
       0xFF80..=0xFFFE=>self.hram_read(address),//HRAM
       0xFFFF =>todo!(),//interrupt enable
       _ =>panic!()
@@ -83,10 +83,56 @@ impl MemoryBus {
       },//Not usable
       0xFF00 =>todo!(),//Joypad 
       0xFF04..=0xFF07 =>todo!(), //Timer
-      0xFF40..=0xFF4B => self.ppu.lcd_write(address,val),
+      0xFF40..=0xFF4B => self.lcd_write(address,val),
       0xFF80..=0xFFFE=>self.hram_write(address,val),//HRAM
       0xFFFF =>todo!(),//interrupt enable
       _ =>panic!()
+    }
+  }
+
+  pub fn lcd_read(&self,address:u16)->u8{
+    match address{
+        0xFF40 => self.ppu.lcdc,
+        0xFF41 => self.ppu.lcds,
+        0xFF42 => self.ppu.scy,
+        0xFF43 => self.ppu.scx,
+        0xFF44 => self.ppu.ly,
+        0xFF45 => self.ppu.lyc,
+        0xFF46 => {
+            panic!("Can't read DMA")
+        },
+        0xFF47 => self.ppu.bg_palette,
+        0xFF48 => self.ppu.obp0,
+        0xFF49 => self.ppu.obp1,
+        0xFF4A => self.ppu.wy,
+        0xFF4B => self.ppu.wx,
+        _ =>panic!()
+    }
+  }
+
+  pub fn lcd_write(&mut self,address:u16,val:u8){
+      match address{
+          0xFF40 => self.ppu.lcdc = val,
+          0xFF41 => self.ppu.lcds = val,
+          0xFF42 => self.ppu.scy = val,
+          0xFF43 => self.ppu.scx = val,
+          0xFF44 => self.ppu.ly = val,
+          0xFF45 => self.ppu.lyc = val,
+          0xFF46 => self.dma_transfer(val),
+          0xFF47 => self.ppu.bg_palette = val,
+          0xFF48 => self.ppu.obp0 = val,
+          0xFF49 => self.ppu.obp1 = val,
+          0xFF4A => self.ppu.wy = val,
+          0xFF4B => self.ppu.wx = val,
+          _ =>panic!()
+      }
+  }
+
+  fn dma_transfer(&mut self,start:u8){
+    let address = start as u16 * 0x100;
+    for i in 0..0xA0u16{
+        let val = self.bus_read(address+i);
+        self.ppu.oam_write(i, val);
     }
   }
 }

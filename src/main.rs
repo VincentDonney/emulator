@@ -3,7 +3,6 @@ mod cpu;
 mod instruction;
 mod timer;
 mod launch;
-mod dma;
 mod ppu;
 mod tile;
 //mod gpu;
