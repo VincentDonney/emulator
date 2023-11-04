@@ -45,11 +45,11 @@ impl PPU{
         }
     }
 
-    fn ppu_tick(&self){
-
-        self.render_line();
-        self.ly+= 1;
-        
+    fn ppu_step(&self){
+        if self.get_bit(self.lcdc, 7) == 1 {
+            self.render_line();
+            self.ly+= 1;
+        }   
     }
 
     fn get_bit(&self,byte:u8,bit:u8)->u8{
@@ -86,7 +86,6 @@ impl PPU{
             0xFF49 => self.obp1,
             0xFF4A => self.wy,
             0xFF4B => self.wx,
-
         }
     }
 
@@ -104,7 +103,6 @@ impl PPU{
             0xFF49 => self.obp1 = val,
             0xFF4A => self.wy = val,
             0xFF4B => self.wx = val,
-
         }
     }
 
@@ -204,6 +202,8 @@ impl PPU{
                 let flags = self.oam[i+3];
                 let ly = self.ly;
                 let priority =self.get_bit(flags, 7);
+                let y_flip = self.get_bit(flags, 6);
+                let x_flip = self.get_bit(flags, 5);
                 if self.is_visible(x, y){
                     match self.get_bit(self.lcdc, 2){
                         0 =>{
@@ -215,7 +215,19 @@ impl PPU{
                             
                             for k in (x-8)..x{
                                 if (priority == 0) || (priority == 1 && self.video_buffer[(ly*160+k) as usize] == 0){
-                                    self.video_buffer[(ly*160+k) as usize] = tile_pixels[k as usize][(ly-y+16) as usize];
+                                    let mut pixel = tile_pixels[k as usize][(ly-y+16) as usize];
+                                    //Y flip
+                                    if y_flip == 1 {
+                                        pixel = tile_pixels[k as usize][7-(ly-y+16) as usize];
+                                    }
+                                    //X flip
+                                    if  x_flip == 1 {
+                                        pixel = tile_pixels[7-k as usize][(ly-y+16) as usize];
+                                    }
+                                    if x_flip == 1 && y_flip == 1 {
+                                        pixel = tile_pixels[7-k as usize][7-(ly-y+16) as usize];
+                                    }
+                                    self.video_buffer[(ly*160+k) as usize] = pixel;
                                 }
                             }
                         },
@@ -234,7 +246,19 @@ impl PPU{
 
                             for k in (x-8)..x{
                                 if (priority == 0) || (priority == 1 && self.video_buffer[(ly*160+k) as usize] == 0){
-                                    self.video_buffer[(ly*160+k) as usize] = tile_pixels[k as usize][(ly-y+16) as usize];
+                                    let mut pixel = tile_pixels[k as usize][(ly-y+16) as usize];
+                                    //Y flip
+                                    if y_flip == 1 {
+                                        pixel = tile_pixels[k as usize][15-(ly-y+16) as usize];
+                                    }
+                                    //X flip
+                                    if x_flip == 1 {
+                                        pixel = tile_pixels[7-k as usize][(ly-y+16) as usize];
+                                    }
+                                    if x_flip == 1 && y_flip == 1 {
+                                        pixel = tile_pixels[7-k as usize][15-(ly-y+16) as usize];
+                                    }
+                                    self.video_buffer[(ly*160+k) as usize] = pixel;
                                 }
                             }
                         }
