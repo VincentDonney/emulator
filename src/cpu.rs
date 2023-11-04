@@ -15,52 +15,78 @@ pub struct CPU{
     if_reg:u8,
 }
 struct MemoryBus{
-    mem: Vec<u8>,
+    rom: Vec<u8>,
+    wram:[u8;0x2000],
+    hram:[u8;0x80],
     ppu:ppu::PPU
 }
 
 impl MemoryBus {
-  fn read_byte(&self, address: u16) -> u8 {
-    self.mem[address as usize]
+  fn read_rom(&self, address: u16) -> u8 {
+    self.rom[address as usize]
   }
-  fn write_byte(&mut self, address : u16, byte:u8){
-    self.mem[address as usize] = byte; 
+  
+  fn wram_read(&self,address: u16)->u8{
+    self.wram[(address & 0x1FFF) as usize]
   }
 
+  fn wram_write(&mut self,address: u16,val:u8){
+    self.wram[(address & 0x1FFF) as usize] = val;
+  }
+
+  fn hram_read(&self,address: u16)->u8{
+    self.hram[(address & 0x007F) as usize]
+  }
+
+  fn hram_write(&mut self,address: u16,val:u8) {
+    self.hram[(address & 0x007F) as usize] = val;
+  }
 
   pub fn bus_read(&self,address:u16)->u8{
     match address{
-      0x0000..=0x7FFF => self.read_byte(address), //ROM
+      0x0000..=0x7FFF => self.read_rom(address), //ROM
       0x8000..=0x9FFF => self.ppu.vram_read(address), //VRAM
-      0xA000..=0xBFFF => self.read_byte(address), //RAM
-      0xC000..=0xCFFF =>,//WRAM
-      0xD000..=0xDFFF=>,//WRAM
-      0xE000..=0xFDFF=>,//ECHO RAM
-      0xFE00..=0xFE9F=>self.ppu.oam_write(address, val),//OAM
-      0xFEA0..=0xFEFF=>return,//Not usable
-      0xFF00 =>,//Joypad 
-      0xFF04..=0xFF07 =>, //Timer
+      0xA000..=0xBFFF =>{
+        panic!("Tried to read on External RAM")
+      }, //External RAM
+      0xC000..=0xDFFF=>self.wram_read(address),//WRAM
+      0xE000..=0xFDFF=>{
+        panic!("Tried to read on EchoRAM (CGB only)")
+      },//ECHO RAM
+      0xFE00..=0xFE9F=>self.ppu.oam_read(address),//OAM
+      0xFEA0..=0xFEFF=>{
+        panic!("This area is not usable")
+      },//Not usable
+      0xFF00 =>todo!(),//Joypad 
+      0xFF04..=0xFF07 =>todo!(), //Timer
       0xFF40..=0xFF4B => self.ppu.lcd_read(address),
-      0xFF80..=0xFFFE=>,//HRAM
-      0xFFFF =>//interrupt enable
+      0xFF80..=0xFFFE=>self.hram_read(address),//HRAM
+      0xFFFF =>todo!(),//interrupt enable
+      _ =>panic!()
     }
   }
 
-  fn bus_write(&self,address:u16,val:u8){
+  fn bus_write(&mut self,address:u16,val:u8){
     match address{
-      0x0000..=0x7FFF => return, //ROM but rom only => no write 
+      0x0000..=0x7FFF => return, //ROM
       0x8000..=0x9FFF => self.ppu.vram_write(address,val), //VRAM
-      0xA000..=0xBFFF => , //RAM
-      0xC000..=0xCFFF =>,//WRAM
-      0xD000..=0xDFFF=>,//WRAM
-      0xE000..=0xFDFF=>,//ECHO RAM
-      0xFE00..=0xFE9F=>,//OAM
-      0xFEA0..=0xFEFF=>return,//Not usable
-      0xFF00 =>,//Joypad 
-      0xFF04..=0xFF07 =>, //Timer
+      0xA000..=0xBFFF =>{
+        panic!("Tried to read on External RAM")
+      }, //External RAM
+      0xC000..=0xDFFF=>self.wram_write(address,val),//WRAM
+      0xE000..=0xFDFF=>{
+        panic!("Tried to read on EchoRAM (CGB only)")
+      },//ECHO RAM
+      0xFE00..=0xFE9F=>self.ppu.oam_write(address,val),//OAM
+      0xFEA0..=0xFEFF=>{
+        panic!("This area is not usable")
+      },//Not usable
+      0xFF00 =>todo!(),//Joypad 
+      0xFF04..=0xFF07 =>todo!(), //Timer
       0xFF40..=0xFF4B => self.ppu.lcd_write(address,val),
-      0xFF80..=0xFFFE=>,//HRAM
-      0xFFFF =>//interrupt enable
+      0xFF80..=0xFFFE=>self.hram_write(address,val),//HRAM
+      0xFFFF =>todo!(),//interrupt enable
+      _ =>panic!()
     }
   }
 }
@@ -90,7 +116,9 @@ impl CPU {
       l:0x4D,
     };
     let mem_bus = MemoryBus {
-      mem:launch::launch("./tetris.gb", 64),
+      rom:launch::launch("./tetris.gb", 64),
+      wram:[0u8;0x2000],
+      hram:[0u8;0x80],
       ppu:ppu::PPU::new()
     };
     CPU {
@@ -107,7 +135,7 @@ impl CPU {
   }
 
   fn read_next_byte(&self) -> u8 {
-    self.bus.read_byte(self.program_counter.wrapping_add(1))
+    self.bus.bus_read(self.program_counter.wrapping_add(1))
   }
 
   fn read_next_word(&self) -> u16{
@@ -115,11 +143,11 @@ impl CPU {
   }
 
   pub fn step(&mut self) {
-    let mut instruction_byte = self.bus.read_byte(self.program_counter);
+    let mut instruction_byte = self.bus.bus_read(self.program_counter);
     
     let prefixed = instruction_byte == 0xCB;
     if prefixed {
-      instruction_byte = self.bus.read_byte(self.program_counter + 1);
+      instruction_byte = self.bus.bus_read(self.program_counter + 1);
       self.clock.timer_tick(4);
     }
 
@@ -182,7 +210,7 @@ impl CPU {
           }
           ArithmeticTarget::HL => {
             let address = self.registers.get_hl();
-            let value = self.bus.read_byte(address);
+            let value = self.bus.bus_read(address);
             let new_value = self.add(value);
             self.registers.a = new_value;
             self.clock.timer_tick(8);
@@ -296,7 +324,7 @@ impl CPU {
           }
           ArithmeticTarget::HL => {
             let address = self.registers.get_hl();
-            let value = self.bus.read_byte(address);
+            let value = self.bus.bus_read(address);
             let (new_value, _did_overflow) = self.sub(value);
             self.registers.a = new_value;
             self.clock.timer_tick(8);
@@ -358,7 +386,7 @@ impl CPU {
           }
           ArithmeticTarget::HL => {
             let address = self.registers.get_hl();
-            let value = self.bus.read_byte(address);
+            let value = self.bus.bus_read(address);
             self.and_hl(value);
             self.clock.timer_tick(8);
             self.program_counter.wrapping_add(1)
@@ -419,7 +447,7 @@ impl CPU {
           ArithmeticTarget::HL => {
               // Read the value from memory at the address pointed to by HL
               let address = self.registers.get_hl();
-              let value = self.bus.read_byte(address);
+              let value = self.bus.bus_read(address);
               self.sbc_hl(value);
               self.clock.timer_tick(8);
               self.program_counter.wrapping_add(1)
@@ -480,7 +508,7 @@ impl CPU {
           ArithmeticTarget::HL => {
               // Read the value from memory at the address pointed to by HL
               let address = self.registers.get_hl();
-              let value = self.bus.read_byte(address);
+              let value = self.bus.bus_read(address);
               self.or_hl(value);
               self.clock.timer_tick(8);
               self.program_counter.wrapping_add(1)
@@ -541,7 +569,7 @@ impl CPU {
           ArithmeticTarget::HL => {
               // Read the value from memory at the address pointed to by HL
               let address = self.registers.get_hl();
-              let value = self.bus.read_byte(address);
+              let value = self.bus.bus_read(address);
               self.xor_hl(value);
               self.clock.timer_tick(8);
               self.program_counter.wrapping_add(1)
@@ -602,7 +630,7 @@ impl CPU {
           ArithmeticTarget::HL => {
               // Read the value from memory at the address pointed to by HL
               let address = self.registers.get_hl();
-              let value = self.bus.read_byte(address);
+              let value = self.bus.bus_read(address);
               self.cp(&value);
               self.clock.timer_tick(8);
               self.program_counter.wrapping_add(1)
@@ -670,10 +698,10 @@ impl CPU {
           IncDecTarget::HLP => {
               // Read the value from memory at the address pointed to by HL
               let address = self.registers.get_hl();
-              let mut value = self.bus.read_byte(address);
+              let mut value = self.bus.bus_read(address);
               self.inc(&mut value);
               // Write the modified value back to memory
-              self.bus.write_byte(address, value);
+              self.bus.bus_write(address, value);
               self.clock.timer_tick(12);
               self.program_counter.wrapping_add(1)
           }
@@ -757,10 +785,10 @@ impl CPU {
           IncDecTarget::HLP => {
               // Read the value from memory at the address pointed to by HL
               let address = self.registers.get_hl();
-              let mut value = self.bus.read_byte(address);
+              let mut value = self.bus.bus_read(address);
               self.dec(&mut value);
               // Write the modified value back to memory
-              self.bus.write_byte(address, value);
+              self.bus.bus_write(address, value);
               self.clock.timer_tick(12);
               self.program_counter.wrapping_add(1)
           },
@@ -857,7 +885,7 @@ impl CPU {
             self.program_counter.wrapping_add(1)
           },
           ArithmeticTarget::HL => {
-            self.adc(self.bus.read_byte(self.registers.get_hl()));
+            self.adc(self.bus.bus_read(self.registers.get_hl()));
             self.clock.timer_tick(8);
             self.program_counter.wrapping_add(2)
           },
@@ -920,7 +948,7 @@ impl CPU {
             PrefixTarget::HL => {
                 // Read the value from memory at the address pointed to by HL
                 let address = self.registers.get_hl();
-                let value = self.bus.read_byte(address);
+                let value = self.bus.bus_read(address);
                 self.bit(bit, value);
                 self.clock.timer_tick(16);
                 self.program_counter.wrapping_add(2)
@@ -974,10 +1002,10 @@ impl CPU {
             PrefixTarget::HL => {
                 // Read the value from memory at the address pointed to by HL
                 let address = self.registers.get_hl();
-                let value = self.bus.read_byte(address);
+                let value = self.bus.bus_read(address);
                 let res_val = self.res(bit, value);
                 // Write the modified value back to memory
-                self.bus.write_byte(address, res_val);
+                self.bus.bus_write(address, res_val);
                 self.clock.timer_tick(16);
                 self.program_counter.wrapping_add(2)
             }
@@ -1030,10 +1058,10 @@ impl CPU {
             PrefixTarget::HL => {
                 // Read the value from memory at the address pointed to by HL
                 let address = self.registers.get_hl();
-                let value = self.bus.read_byte(address);
+                let value = self.bus.bus_read(address);
                 let set_val = self.set(bit, value);
                 // Write the modified value back to memory
-                self.bus.write_byte(address, set_val);
+                self.bus.bus_write(address, set_val);
                 self.clock.timer_tick(16);
                 self.program_counter.wrapping_add(2)
             }
@@ -1093,11 +1121,11 @@ impl CPU {
               PrefixTarget::HL => {
                   // Read the value from memory at the address pointed to by HL
                   let address = self.registers.get_hl();
-                  let mut value = self.bus.read_byte(address);
+                  let mut value = self.bus.bus_read(address);
                   self.srl(&value);
                   value >>= 1;
                   // Write the modified value back to memory
-                  self.bus.write_byte(address, value);
+                  self.bus.bus_write(address, value);
                   self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
               }
@@ -1150,10 +1178,10 @@ impl CPU {
               PrefixTarget::HL => {
                   // Read the value from memory at the address pointed to by HL
                   let address = self.registers.get_hl();
-                  let value = self.bus.read_byte(address);
+                  let value = self.bus.bus_read(address);
                   let rr_val = self.rr(value);
                   // Write the modified value back to memory
-                  self.bus.write_byte(address, rr_val);
+                  self.bus.bus_write(address, rr_val);
                   self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
               }
@@ -1206,10 +1234,10 @@ impl CPU {
               PrefixTarget::HL => {
                   // Read the value from memory at the address pointed to by HL
                   let address = self.registers.get_hl();
-                  let value = self.bus.read_byte(address);
+                  let value = self.bus.bus_read(address);
                   let rl_val = self.rl(value);
                   // Write the modified value back to memory
-                  self.bus.write_byte(address, rl_val);
+                  self.bus.bus_write(address, rl_val);
                   self.clock.timer_tick(16);
                   self.program_counter.wrapping_add(2)
               }
@@ -1262,10 +1290,10 @@ impl CPU {
               PrefixTarget::HL => {
                   // Read the value from memory at the address pointed to by HL
                   let address = self.registers.get_hl();
-                  let value = self.bus.read_byte(address);
+                  let value = self.bus.bus_read(address);
                   let rrc_val = self.rrc(value);
                   // Write the modified value back to memory
-                  self.bus.write_byte(address, rrc_val);
+                  self.bus.bus_write(address, rrc_val);
                   self.clock.timer_tick(8);
                   self.program_counter.wrapping_add(2)
               }
@@ -1318,11 +1346,11 @@ impl CPU {
               PrefixTarget::HL => {
                   // Read the value from memory at the address pointed to by HL
                   let address = self.registers.get_hl();
-                  let value = self.bus.read_byte(address);
+                  let value = self.bus.bus_read(address);
                   let rlc_val = self.rlc(value);
                   
                   // Write the modified value back to memory
-                  self.bus.write_byte(address, rlc_val);
+                  self.bus.bus_write(address, rlc_val);
                   self.clock.timer_tick(16);
                   self.program_counter.wrapping_add(2)
               }
@@ -1375,10 +1403,10 @@ impl CPU {
               PrefixTarget::HL => {
                   // Read the value from memory at the address pointed to by HL
                   let address = self.registers.get_hl();
-                  let value = self.bus.read_byte(address);
+                  let value = self.bus.bus_read(address);
                   let sra_val = self.sra(value);
                   // Write the modified value back to memory
-                  self.bus.write_byte(address, sra_val);
+                  self.bus.bus_write(address, sra_val);
                   self.clock.timer_tick(16);
                   self.program_counter.wrapping_add(2)
               }
@@ -1438,11 +1466,11 @@ impl CPU {
               PrefixTarget::HL => {
                   // Read the value from memory at the address pointed to by HL
                   let address = self.registers.get_hl();
-                  let mut value = self.bus.read_byte(address);
+                  let mut value = self.bus.bus_read(address);
                   self.sla(&value);
                   value <<=1;
                   // Write the modified value back to memory
-                  self.bus.write_byte(address, value );
+                  self.bus.bus_write(address, value );
                   self.clock.timer_tick(16);
                   self.program_counter.wrapping_add(2)
               }
@@ -1495,10 +1523,10 @@ impl CPU {
               PrefixTarget::HL => {
                   // Read the value from memory at the address pointed to by HL
                   let address = self.registers.get_hl();
-                  let value = self.bus.read_byte(address);
+                  let value = self.bus.bus_read(address);
                   let swap_val =self.swap(value);
                   // Write the modified value back to memory
-                  self.bus.write_byte(address, swap_val);
+                  self.bus.bus_write(address, swap_val);
                   self.clock.timer_tick(16);
                   self.program_counter.wrapping_add(2)
               }
@@ -1533,7 +1561,7 @@ impl CPU {
               LoadByteTarget::BC =>{
                 match source{
                   LoadByteSource::A=>{
-                    self.bus.write_byte(self.registers.get_bc(), self.registers.a);
+                    self.bus.bus_write(self.registers.get_bc(), self.registers.a);
                     self.clock.timer_tick(8);
                     self.program_counter.wrapping_add(1)
                   },
@@ -1548,7 +1576,7 @@ impl CPU {
               LoadByteTarget::DE =>{
                 match source{
                   LoadByteSource::A=>{
-                    self.bus.write_byte(self.registers.get_de(), self.registers.a);
+                    self.bus.bus_write(self.registers.get_de(), self.registers.a);
                     self.clock.timer_tick(8);
                     self.program_counter.wrapping_add(1)
                   },
@@ -1563,37 +1591,37 @@ impl CPU {
               LoadByteTarget::HL =>{
                 match source{
                   LoadByteSource::A=>{
-                    self.bus.write_byte(self.registers.get_hl(), self.registers.a);
+                    self.bus.bus_write(self.registers.get_hl(), self.registers.a);
                     self.clock.timer_tick(8);
                     self.program_counter.wrapping_add(1)
                   },
                   LoadByteSource::B => {
-                    self.bus.write_byte(self.registers.get_hl(), self.registers.b);
+                    self.bus.bus_write(self.registers.get_hl(), self.registers.b);
                     self.clock.timer_tick(8);
                     self.program_counter.wrapping_add(1)
                   },
                   LoadByteSource::C => {
-                    self.bus.write_byte(self.registers.get_hl(), self.registers.c);
+                    self.bus.bus_write(self.registers.get_hl(), self.registers.c);
                     self.clock.timer_tick(8);
                     self.program_counter.wrapping_add(1)
                   },
                   LoadByteSource::D => {
-                    self.bus.write_byte(self.registers.get_hl(), self.registers.d);
+                    self.bus.bus_write(self.registers.get_hl(), self.registers.d);
                     self.clock.timer_tick(8);
                     self.program_counter.wrapping_add(1)
                   },
                   LoadByteSource::E => {
-                    self.bus.write_byte(self.registers.get_hl(), self.registers.e);
+                    self.bus.bus_write(self.registers.get_hl(), self.registers.e);
                     self.clock.timer_tick(8);
                     self.program_counter.wrapping_add(1)
                   },
                   LoadByteSource::H => {
-                    self.bus.write_byte(self.registers.get_hl(), self.registers.h);
+                    self.bus.bus_write(self.registers.get_hl(), self.registers.h);
                     self.clock.timer_tick(8);
                     self.program_counter.wrapping_add(1)
                   },
                   LoadByteSource::L => {
-                    self.bus.write_byte(self.registers.get_hl(), self.registers.l);
+                    self.bus.bus_write(self.registers.get_hl(), self.registers.l);
                     self.clock.timer_tick(8);
                     self.program_counter.wrapping_add(1)
                   },                 
@@ -1614,7 +1642,7 @@ impl CPU {
                     self.program_counter.wrapping_add(2)
                   }
                   LoadByteSource::D8 => {
-                    self.bus.write_byte(self.registers.get_hl(), self.read_next_byte());
+                    self.bus.bus_write(self.registers.get_hl(), self.read_next_byte());
                     self.clock.timer_tick(8);
                     self.program_counter.wrapping_add(1)
                   },
@@ -1637,13 +1665,13 @@ impl CPU {
                 }
               },
               LoadByteTarget::HLI => {
-                self.bus.write_byte(self.registers.get_hl(), self.registers.a);
+                self.bus.bus_write(self.registers.get_hl(), self.registers.a);
                 self.registers.set_hl(self.registers.get_hl().wrapping_add(1));
                 self.clock.timer_tick(8);
                 self.program_counter.wrapping_add(1)
               },
               LoadByteTarget::HLD =>{
-                self.bus.write_byte(self.registers.get_hl(), self.registers.a);
+                self.bus.bus_write(self.registers.get_hl(), self.registers.a);
                 self.registers.set_hl(self.registers.get_hl().wrapping_sub(1));
                 self.clock.timer_tick(8);
                 self.program_counter.wrapping_add(1)
@@ -1651,23 +1679,23 @@ impl CPU {
               LoadByteTarget::A => {
                 match source{
                   LoadByteSource::BC =>{
-                    self.registers.a = self.bus.read_byte(self.registers.get_bc());
+                    self.registers.a = self.bus.bus_read(self.registers.get_bc());
                     self.clock.timer_tick(8);
                     self.program_counter.wrapping_add(1)
                   },
                   LoadByteSource::DE =>{
-                    self.registers.a = self.bus.read_byte(self.registers.get_de());
+                    self.registers.a = self.bus.bus_read(self.registers.get_de());
                     self.clock.timer_tick(8);
                     self.program_counter.wrapping_add(1)
                   },
                   LoadByteSource::HLI =>{
-                    self.registers.a = self.bus.read_byte(self.registers.get_hl());
+                    self.registers.a = self.bus.bus_read(self.registers.get_hl());
                     self.registers.set_hl(self.registers.get_hl().wrapping_add(1));
                     self.clock.timer_tick(8);
                     self.program_counter.wrapping_add(1)
                   },
                   LoadByteSource::HLD =>{
-                    self.registers.a = self.bus.read_byte(self.registers.get_hl());
+                    self.registers.a = self.bus.bus_read(self.registers.get_hl());
                     self.registers.set_hl(self.registers.get_hl().wrapping_sub(1));
                     self.clock.timer_tick(8);
                     self.program_counter.wrapping_add(1)
@@ -1703,7 +1731,7 @@ impl CPU {
                     self.program_counter.wrapping_add(1)
                   },
                   LoadByteSource::HL =>{
-                    self.registers.a = self.bus.read_byte(self.registers.get_hl());
+                    self.registers.a = self.bus.bus_read(self.registers.get_hl());
                     self.clock.timer_tick(8);
                     self.program_counter.wrapping_add(1)
                   },
@@ -1718,17 +1746,17 @@ impl CPU {
                     self.program_counter.wrapping_add(1)
                   },
                   LoadByteSource::A8 =>{
-                    self.registers.a = self.bus.read_byte(self.read_next_byte() as u16);
+                    self.registers.a = self.bus.bus_read(self.read_next_byte() as u16);
                     self.clock.timer_tick(12);
                     self.program_counter.wrapping_add(2)
                   },
                   LoadByteSource::A16 =>{
-                    self.registers.a = self.bus.read_byte(self.read_next_word());
+                    self.registers.a = self.bus.bus_read(self.read_next_word());
                     self.clock.timer_tick(16);
                     self.program_counter.wrapping_add(3)
                   },
                   LoadByteSource::FF00C =>{
-                    self.registers.a = self.bus.read_byte(self.registers.c as u16);
+                    self.registers.a = self.bus.bus_read(self.registers.c as u16);
                     self.clock.timer_tick(8);
                     self.program_counter.wrapping_add(2)
                   },
@@ -1768,7 +1796,7 @@ impl CPU {
                     self.program_counter.wrapping_add(1)
                   },
                   LoadByteSource::HL =>{
-                    self.registers.b = self.bus.read_byte(self.registers.get_hl());
+                    self.registers.b = self.bus.bus_read(self.registers.get_hl());
                     self.clock.timer_tick(8);
                     self.program_counter.wrapping_add(1)
                   },
@@ -1818,7 +1846,7 @@ impl CPU {
                     self.program_counter.wrapping_add(1)
                   },
                   LoadByteSource::HL =>{
-                    self.registers.b = self.bus.read_byte(self.registers.get_hl());
+                    self.registers.b = self.bus.bus_read(self.registers.get_hl());
                     self.clock.timer_tick(8);
                     self.program_counter.wrapping_add(1)
                   },
@@ -1868,7 +1896,7 @@ impl CPU {
                     self.program_counter.wrapping_add(1)
                   },
                   LoadByteSource::HL =>{
-                    self.registers.b = self.bus.read_byte(self.registers.get_hl());
+                    self.registers.b = self.bus.bus_read(self.registers.get_hl());
                     self.clock.timer_tick(8);
                     self.program_counter.wrapping_add(1)
                   },
@@ -1918,7 +1946,7 @@ impl CPU {
                     self.program_counter.wrapping_add(1)
                   },
                   LoadByteSource::HL =>{
-                    self.registers.b = self.bus.read_byte(self.registers.get_hl());
+                    self.registers.b = self.bus.bus_read(self.registers.get_hl());
                     self.clock.timer_tick(8);
                     self.program_counter.wrapping_add(1)
                   },
@@ -1968,7 +1996,7 @@ impl CPU {
                     self.program_counter.wrapping_add(1)
                   },
                   LoadByteSource::HL =>{
-                    self.registers.b = self.bus.read_byte(self.registers.get_hl());
+                    self.registers.b = self.bus.bus_read(self.registers.get_hl());
                     self.clock.timer_tick(8);
                     self.program_counter.wrapping_add(1)
                   },
@@ -2018,7 +2046,7 @@ impl CPU {
                     self.program_counter.wrapping_add(1)
                   },
                   LoadByteSource::HL =>{
-                    self.registers.b = self.bus.read_byte(self.registers.get_hl());
+                    self.registers.b = self.bus.bus_read(self.registers.get_hl());
                     self.clock.timer_tick(8);
                     self.program_counter.wrapping_add(1)
                   },
@@ -2038,12 +2066,12 @@ impl CPU {
               LoadByteTarget::A16 =>{
                 match source{
                   LoadByteSource::A =>{
-                    self.bus.write_byte(self.read_next_byte() as u16, self.registers.a);
+                    self.bus.bus_write(self.read_next_byte() as u16, self.registers.a);
                     self.clock.timer_tick(16);
                     self.program_counter.wrapping_add(3)
                   },
                   LoadByteSource::SP =>{
-                    self.bus.write_byte(self.read_next_byte() as u16, self.stack_pointer as u8);
+                    self.bus.bus_write(self.read_next_byte() as u16, self.stack_pointer as u8);
                     self.clock.timer_tick(20);
                     self.program_counter.wrapping_add(3)
                   },
@@ -2051,12 +2079,12 @@ impl CPU {
                 }
               },
               LoadByteTarget::A8 =>{
-                self.bus.write_byte(self.read_next_byte() as u16, self.registers.a);
+                self.bus.bus_write(self.read_next_byte() as u16, self.registers.a);
                 self.clock.timer_tick(12);
                 self.program_counter.wrapping_add(2)
               },
               LoadByteTarget::FF00C => {
-                self.bus.write_byte(self.registers.c as u16, self.registers.a);
+                self.bus.bus_write(self.registers.c as u16, self.registers.a);
                 self.clock.timer_tick(8);
                 self.program_counter.wrapping_add(2)
               },
@@ -2233,17 +2261,17 @@ impl CPU {
   }
   fn push(&mut self, val:u16){
     self.stack_pointer = self.stack_pointer.wrapping_sub(1);
-    self.bus.write_byte(self.stack_pointer, ((val & 0xFF00) >> 8) as u8);
+    self.bus.bus_write(self.stack_pointer, ((val & 0xFF00) >> 8) as u8);
     self.stack_pointer = self.stack_pointer.wrapping_sub(1);
-    self.bus.write_byte(self.stack_pointer, (val & 0xFF) as u8);
+    self.bus.bus_write(self.stack_pointer, (val & 0xFF) as u8);
         
   }
 
   fn pop(&mut self)->u16{
-    let lsb = self.bus.read_byte(self.stack_pointer) as u16;
+    let lsb = self.bus.bus_read(self.stack_pointer) as u16;
     self.stack_pointer = self.stack_pointer.wrapping_add(1);
     
-    let msb = self.bus.read_byte(self.stack_pointer) as u16;
+    let msb = self.bus.bus_read(self.stack_pointer) as u16;
     self.stack_pointer = self.stack_pointer.wrapping_add(1);
     
     (msb << 8) | lsb
@@ -2619,8 +2647,8 @@ impl CPU {
 
   fn jump(&mut self, should_jump: bool) -> u16 {
     if should_jump {
-      let least_significant_byte = self.bus.read_byte(self.program_counter + 1) as u16;
-      let most_significant_byte = self.bus.read_byte(self.program_counter + 2) as u16;
+      let least_significant_byte = self.bus.bus_read(self.program_counter + 1) as u16;
+      let most_significant_byte = self.bus.bus_read(self.program_counter + 2) as u16;
         (most_significant_byte << 8) | least_significant_byte
     } else {
       self.program_counter.wrapping_add(3)
@@ -2629,8 +2657,8 @@ impl CPU {
 
   fn jump_hl(&mut self, should_jump: bool ) -> u16 {
     if should_jump {
-      let least_significant_byte = self.bus.read_byte(self.registers.get_hl() + 1) as u16;
-      let most_significant_byte = self.bus.read_byte(self.registers.get_hl() + 2) as u16;
+      let least_significant_byte = self.bus.bus_read(self.registers.get_hl() + 1) as u16;
+      let most_significant_byte = self.bus.bus_read(self.registers.get_hl() + 2) as u16;
         (most_significant_byte << 8) | least_significant_byte
     } else {
       self.program_counter.wrapping_add(1)

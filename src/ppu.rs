@@ -45,7 +45,7 @@ impl PPU{
         }
     }
 
-    fn ppu_step(&self){
+    fn ppu_step(&mut self){
         if self.get_bit(self.lcdc, 7) == 1 {
             self.render_line();
             self.ly+= 1;
@@ -56,15 +56,15 @@ impl PPU{
         byte >> bit & 1
     }
 
-    pub fn oam_read(&self,mut address:u16)->u8{
+    pub fn oam_read(&self,address:u16)->u8{
         self.oam[(address &0xFF) as usize]
     }
 
-    pub fn oam_write(&self,mut address:u16,val:u8){
+    pub fn oam_write(&mut self,address:u16,val:u8){
         self.oam[(address & 0xFF) as usize] = val;
     }
 
-    pub fn vram_write(&self,address:u16,value:u8){
+    pub fn vram_write(&mut self,address:u16,value:u8){
         self.vram[(address & 0x1FFF) as usize] = value;
     }
     
@@ -86,10 +86,11 @@ impl PPU{
             0xFF49 => self.obp1,
             0xFF4A => self.wy,
             0xFF4B => self.wx,
+            _ =>panic!()
         }
     }
 
-    pub fn lcd_write(&self,address:u16,val:u8){
+    pub fn lcd_write(&mut self,address:u16,val:u8){
         match address{
             0xFF40 => self.lcdc = val,
             0xFF41 => self.lcds = val,
@@ -103,10 +104,11 @@ impl PPU{
             0xFF49 => self.obp1 = val,
             0xFF4A => self.wy = val,
             0xFF4B => self.wx = val,
+            _ =>panic!()
         }
     }
 
-    fn render_line(&self){
+    fn render_line(&mut self){
         let y = self.ly;
         for x in 0..160 {
             self.video_buffer[(x+160*y) as usize] = self.render_pixel(x,y);
@@ -142,14 +144,14 @@ impl PPU{
     }
 
     fn pixel_from_window(&self,x:u8,y:u8)->u8{
-        let x = x - (self.wx - 7);
-        let y = y - self.wy;
+        let x = (x - (self.wx - 7)) as u32;
+        let y = (y - self.wy) as u32;
         self.win_tileset[(x+256*y) as usize]
     }
 
     fn pixel_from_background(&self,x:u8,y:u8)->u8{
-        let x = (x + self.scx)%256;
-        let y = (y + self.scy)%256;
+        let x = (x + self.scx) as u32 % 256;
+        let y = (y + self.scy) as u32 % 256;
         self.bg_tileset[(x+256*y) as usize]
         
     }
@@ -157,7 +159,8 @@ impl PPU{
     fn tilesets(&self,set_type:&str)->[u8;256*256]{
         let bit = match set_type{
             "bg" => 3,
-            "win" => 6
+            "win" => 6,
+            &_ =>panic!()
         };
         let tilemap = self.tile_map(bit);
         let mut tile_line = 0;
@@ -187,12 +190,13 @@ impl PPU{
     fn is_visible(&self,x:u8,y:u8)->bool{
         let h = match self.get_bit(self.lcdc,2){
             0 => 8,
-            1 => 16
+            1 => 16,
+            _ =>panic!()
         };
         (x != 0) && (self.ly + 16 >= y) && (self.ly < y + h)
     }
         
-    fn render_sprites(&self){
+    fn render_sprites(&mut self){
         if self.get_bit(self.lcdc, 1) == 1 {
             for i in 0..40 {
                 let y = self.oam[i];
@@ -262,6 +266,7 @@ impl PPU{
                                 }
                             }
                         }
+                        _ =>panic!()
                     }
                 }
             }
@@ -281,14 +286,16 @@ impl PPU{
     fn tile_map(&self,bit:u8)->(u16,u16){
         match self.get_bit(self.lcdc, bit){
             0 =>(0x9800,0x9BFF),
-            1 =>(0x9C00,0x9FFF)
+            1 =>(0x9C00,0x9FFF),
+            _ =>panic!()
         }
     }
 
     fn addressing_mode(&self,tile_index:u8)->u16{
         match self.get_bit(self.lcdc, 4){
             0 =>(0x1000 + (((tile_index as i8) as i16) * 16)) as u16,
-            1 =>0x0 + (tile_index as u16) * 16
+            1 =>0x0 + (tile_index as u16) * 16,
+            _ =>panic!()
         }
     }
     
