@@ -1,4 +1,5 @@
 use crate::tile::extract_tile;
+use crate::gpu::Screen;
 
 pub(crate) struct PPU {
     pub lcdc:u8,
@@ -44,13 +45,14 @@ impl PPU{
     }
 
     pub fn ppu_step(&mut self){
+        let mut screen = Screen::new();
         if self.get_bit(self.lcdc, 7) == 1 {
             match self.ly{
                 0 =>{
                     self.bg_tileset = self.tilesets("bg");
                     self.win_tileset = self.tilesets("win");
                 },
-                144 => render_screen(self.video_buffer),
+                144 => Screen::render_screen(&mut screen, self.video_buffer),
                 145..=153 => self.ly += 1,
                 154 => self.ly = 0,
                 
