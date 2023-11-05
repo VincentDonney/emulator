@@ -29,10 +29,14 @@ fn main() {
     }
     */
     let mut cpu = cpu::CPU::new();
-    let mut i = 0;
-    while i <100{
+    
+    while !cpu.is_halted{
         cpu.step();
-        i = i+1;
+        if cpu.bus.timer.cycles_counter >= 456 {
+            cpu.bus.ppu.ppu_step();
+            cpu.bus.timer.cycles_counter = cpu.bus.timer.cycles_counter % 456;
+        }
+        
     }
     
 }

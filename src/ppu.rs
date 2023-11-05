@@ -43,15 +43,28 @@ impl PPU{
         }
     }
 
-    fn ppu_step(&mut self){
+    pub fn ppu_step(&mut self){
         if self.get_bit(self.lcdc, 7) == 1 {
-            self.render_line();
-            self.ly+= 1;
-        }   
+            match self.ly{
+                0 =>{
+                    self.bg_tileset = self.tilesets("bg");
+                    self.win_tileset = self.tilesets("win");
+                },
+                144 => render_screen(self.video_buffer),
+                145..=153 => self.ly += 1,
+                154 => self.ly = 0,
+                
+            }
+            if self.ly <= 144 {
+                self.render_line();
+                self.ly+= 1;
+            }
+        }
+         
     }
 
     fn get_bit(&self,byte:u8,bit:u8)->u8{
-        byte >> bit & 1
+        (byte >> bit) & 1
     }
 
     pub fn oam_read(&self,address:u16)->u8{
@@ -180,7 +193,7 @@ impl PPU{
                             let tile_pixels = extract_tile(tile);
                             
                             for k in (x-8)..x{
-                                if (priority == 0) || (priority == 1 && self.video_buffer[(ly*160+k) as usize] == 0){
+                                if (priority == 0) || (priority == 1 && self.video_buffer[(ly*160+k) as usize] == 0) && !self.pixel_in_window(k, ly-y+16){
                                     let mut pixel = tile_pixels[k as usize][(ly-y+16) as usize];
                                     //Y flip
                                     if y_flip == 1 {
