@@ -27,7 +27,11 @@ impl Screen{
     }
 
     pub fn render_screen(&mut self, video_buffer: [u8;160*144]) {
+
+    
         self.window.limit_update_rate(Some(std::time::Duration::from_micros(16600))); // ~60fps
+    
+    
         let mut fps_timer = Instant::now();
         let mut fps_counter = 0;
     
@@ -65,3 +69,5 @@ impl Screen{
     }
     
 }
+
+

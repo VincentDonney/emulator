@@ -1,4 +1,6 @@
 use crate::tile::extract_tile;
+
+
 pub struct PPU {
     pub lcdc:u8,
     pub lcds:u8,
@@ -43,20 +45,18 @@ impl PPU{
     }
 
     pub fn ppu_step(&mut self){
-        println!("\x1b[93mLy : {}\x1b[0m",self.ly);
-        println!("\x1b[93mLcd : {}\x1b[0m",self.lcdc);
         if self.get_bit(self.lcdc, 7) == 1 {
             match self.ly{
                 0 =>{
                     self.bg_tileset = self.tilesets("bg");
                     self.win_tileset = self.tilesets("win");
                 },
-                145..=153 => self.ly += 1,
+                144..=153 => self.ly += 1,
                 154 => self.ly = 0,
                 _=>()
                 
             }
-            if self.ly <= 144 {
+            if self.ly < 144 {
                 self.render_line();
                 self.ly+= 1;
             }
