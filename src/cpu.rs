@@ -4,7 +4,7 @@ use crate::ppu;
 use crate::register;
 use crate::timer::*;
 pub struct CPU{
-    registers:register::Registers,
+    pub registers:register::Registers,
     program_counter:u16,
     stack_pointer:u16,
     pub bus:MemoryBus,
@@ -44,54 +44,47 @@ impl MemoryBus {
 
   pub fn bus_read(&self,address:u16)->u8{
     match address{
-      0x0000..=0x7FFF => self.read_rom(address), //ROM
+      0x0000..=0x7FFF |  0xA000..=0xBFFF => self.read_rom(address), //ROM
       0x8000..=0x9FFF => self.ppu.vram_read(address), //VRAM
-      0xA000..=0xBFFF =>{
-        panic!("Tried to read on External RAM")
-      }, //External RAM
       0xC000..=0xDFFF=>self.wram_read(address),//WRAM
-      0xE000..=0xFDFF=>{
-        panic!("Tried to read on EchoRAM (CGB only)")
-      },//ECHO RAM
+      0xE000..=0xFDFF=>0,//ECHO RAM
       0xFE00..=0xFE9F=>self.ppu.oam_read(address),//OAM
-      0xFEA0..=0xFEFF=>{
-        panic!("This area is not usable")
-      },//Not usable
+      0xFEA0..=0xFEFF=>0,//Not usable
       0xFF00 =>todo!(),//Joypad 
+      0xFF01..=0xFF02 => panic!("Serial transfer Link Cable"),
       0xFF04..=0xFF07 =>self.timer.timer_read(address), //Timer
+      0xFF0F =>todo!(), //interrupt flags
       0xFF40..=0xFF4B => self.lcd_read(address),
+      0xFF4C..=0xFF7F => panic!(),
       0xFF80..=0xFFFE=>self.hram_read(address),//HRAM
       0xFFFF =>todo!(),//interrupt enable
-      _ =>panic!()
+      _ =>0
     }
   }
 
   fn bus_write(&mut self,address:u16,val:u8){
     match address{
-      0x0000..=0x7FFF => return, //ROM
+      0x0000..=0x7FFF => (), //ROM
       0x8000..=0x9FFF => self.ppu.vram_write(address,val), //VRAM
-      0xA000..=0xBFFF =>{
-        panic!("Tried to read on External RAM")
-      }, //External RAM
+      0xA000..=0xBFFF =>(), //External RAM
       0xC000..=0xDFFF=>self.wram_write(address,val),//WRAM
-      0xE000..=0xFDFF=>{
-        panic!("Tried to read on EchoRAM (CGB only)")
-      },//ECHO RAM
+      0xE000..=0xFDFF=>(),//ECHO RAM
       0xFE00..=0xFE9F=>self.ppu.oam_write(address,val),//OAM
-      0xFEA0..=0xFEFF=>{
-        panic!("This area is not usable")
-      },//Not usable
-      0xFF00 =>todo!(),//Joypad 
+      0xFEA0..=0xFEFF=>(),//Not usable
+      0xFF00 =>println!("\x1b[93mJoypad\x1b[0m"),//Joypad 
+      0xFF01..=0xFF02 => (),
       0xFF04..=0xFF07 =>self.timer.timer_write(address, val), //Timer
       0xFF40..=0xFF4B => self.lcd_write(address,val),
+      0xFF4C..=0xFF7F => (),
       0xFF80..=0xFFFE=>self.hram_write(address,val),//HRAM
-      0xFFFF =>todo!(),//interrupt enable
-      _ =>panic!()
+      0xFFFF =>println!("\x1b[93mIE\x1b[0m"),//interrupt enable
+      _ =>println!("\x1b[93mWrite to {}\x1b[0m",address)
     }
+    
   }
 
   pub fn lcd_read(&self,address:u16)->u8{
-    match address{
+    match address{  
         0xFF40 => self.ppu.lcdc,
         0xFF41 => self.ppu.lcds,
         0xFF42 => self.ppu.scy,
@@ -116,7 +109,7 @@ impl MemoryBus {
           0xFF41 => self.ppu.lcds = val,
           0xFF42 => self.ppu.scy = val,
           0xFF43 => self.ppu.scx = val,
-          0xFF44 => self.ppu.ly = val,
+          0xFF44 => (),
           0xFF45 => self.ppu.lyc = val,
           0xFF46 => self.dma_transfer(val),
           0xFF47 => self.ppu.bg_palette = val,
@@ -150,7 +143,12 @@ enum EmulatorError {
 
 impl CPU {
   pub fn new() -> CPU{
-    let flags:register::FlagsRegister = Default::default();  
+    let flags = register::FlagsRegister  {
+        zero: true,
+        subtract: false,
+        half_carry: true,
+        carry: true,
+    };
     let regs = register::Registers{
       a:0x01,
       b:0x00,
@@ -185,7 +183,9 @@ impl CPU {
   }
 
   fn read_next_word(&self) -> u16{
-    self.program_counter.wrapping_add(1)
+    let tmp_pc=self.program_counter.wrapping_add(1);
+
+    self.bus.bus_read(tmp_pc) as u16 | ((self.bus.bus_read(tmp_pc.wrapping_add(1)) as u16) << 8)
   }
 
   pub fn step(&mut self) {
@@ -208,8 +208,9 @@ impl CPU {
 
   fn execute(&mut self, instruction: Instruction) ->u16{
     let instruction_name = instruction_name(&instruction);
-    println!("Executing {} PC = {:#06x}", instruction_name,self.program_counter);
-    match instruction {
+    println!("Executing {} PC = {:#06x}, a: {} b : {} c :{} d : {} e: {} h: {} l: {} lcdc :{:08b} ly: {} Z: {} S: {} HC: {} C: {}", instruction_name,self.program_counter,self.registers.a
+  , self.registers.b,self.registers.c,self.registers.d,self.registers.e,self.registers.h,self.registers.l,self.bus.ppu.lcdc,self.bus.ppu.ly,self.registers.f.zero,self.registers.f.subtract,self.registers.f.half_carry,self.registers.f.carry);
+    match instruction { 
       Instruction::ADD(target) => {
         match target {
           ArithmeticTarget::B => {
@@ -781,49 +782,49 @@ impl CPU {
         match target {
           IncDecTarget::A => {
             let a  = self.registers.a.wrapping_sub(1); 
-            self.inc(&a);
+            self.dec(&a);
             self.registers.a = a;
             self.bus.timer.timer_tick(4);
             self.program_counter.wrapping_add(1)
           },
           IncDecTarget::B => {
-            let b  = self.registers.b.wrapping_sub(1); 
-            self.inc(&b);
+            let b  = self.registers.b.wrapping_sub(1);  
+            self.dec(&b);
             self.registers.b = b;
             self.bus.timer.timer_tick(4);
             self.program_counter.wrapping_add(1)
           },
           IncDecTarget::C => {
             let c  = self.registers.c.wrapping_sub(1); 
-            self.inc(&c);
+            self.dec(&c);
             self.registers.c = c;
             self.bus.timer.timer_tick(4);
             self.program_counter.wrapping_add(1)
           },
           IncDecTarget::D => {
             let d  = self.registers.d.wrapping_sub(1); 
-            self.inc(&d);
+            self.dec(&d);
             self.registers.d = d;
             self.bus.timer.timer_tick(4);
             self.program_counter.wrapping_add(1)
           },
           IncDecTarget::E => {
             let e  = self.registers.e.wrapping_sub(1); 
-            self.inc(&e);
+            self.dec(&e);
             self.registers.e = e;
             self.bus.timer.timer_tick(4);
             self.program_counter.wrapping_add(1)
           },
           IncDecTarget::H => {
             let h  = self.registers.h.wrapping_sub(1); 
-            self.inc(&h);
+            self.dec(&h);
             self.registers.h = h;
             self.bus.timer.timer_tick(4);
             self.program_counter.wrapping_add(1)
           },
           IncDecTarget::L => {
             let l  = self.registers.l.wrapping_sub(1); 
-            self.inc(&l);
+            self.dec(&l);
             self.registers.l = l;
             self.bus.timer.timer_tick(4);
             self.program_counter.wrapping_add(1)
@@ -942,7 +943,7 @@ impl CPU {
             self.bus.timer.timer_tick(8);
             self.program_counter.wrapping_add(2)
           },
-          _ =>{self.program_counter.wrapping_add(1)}
+          _ =>panic!()
         }
       },
       Instruction::CPL() => {
@@ -1673,7 +1674,8 @@ impl CPU {
                     self.program_counter.wrapping_add(1)
                   },                 
                   LoadByteSource::D16=>{
-                    self.registers.set_hl(self.read_next_word());
+                    let next_word = self.read_next_word();
+                    self.registers.set_hl(next_word);
                     self.bus.timer.timer_tick(12);
                     self.program_counter.wrapping_add(3)
                   },
@@ -1823,7 +1825,7 @@ impl CPU {
                     self.program_counter.wrapping_add(1)
                   },
                   LoadByteSource::D =>{
-                    self.registers.b = self.registers.c;
+                    self.registers.b = self.registers.d;
                     self.bus.timer.timer_tick(4);
                     self.program_counter.wrapping_add(1)
                   },
@@ -1833,7 +1835,7 @@ impl CPU {
                     self.program_counter.wrapping_add(1)
                   },
                   LoadByteSource::H =>{
-                    self.registers.b = self.registers.e;
+                    self.registers.b = self.registers.h;
                     self.bus.timer.timer_tick(4);
                     self.program_counter.wrapping_add(1)
                   },
@@ -1853,7 +1855,7 @@ impl CPU {
                     self.program_counter.wrapping_add(1)
                   },
                   LoadByteSource::D8 =>{
-                    self.registers.a = self.read_next_byte();
+                    self.registers.b = self.read_next_byte();
                     self.bus.timer.timer_tick(8);
                     self.program_counter.wrapping_add(2)
                   },
@@ -1893,7 +1895,7 @@ impl CPU {
                     self.program_counter.wrapping_add(1)
                   },
                   LoadByteSource::HL =>{
-                    self.registers.b = self.bus.bus_read(self.registers.get_hl());
+                    self.registers.c = self.bus.bus_read(self.registers.get_hl());
                     self.bus.timer.timer_tick(8);
                     self.program_counter.wrapping_add(1)
                   },
@@ -1903,7 +1905,7 @@ impl CPU {
                     self.program_counter.wrapping_add(1)
                   },
                   LoadByteSource::D8 =>{
-                    self.registers.a = self.read_next_byte();
+                    self.registers.c = self.read_next_byte();
                     self.bus.timer.timer_tick(8);
                     self.program_counter.wrapping_add(2)
                   },
@@ -1943,7 +1945,7 @@ impl CPU {
                     self.program_counter.wrapping_add(1)
                   },
                   LoadByteSource::HL =>{
-                    self.registers.b = self.bus.bus_read(self.registers.get_hl());
+                    self.registers.d = self.bus.bus_read(self.registers.get_hl());
                     self.bus.timer.timer_tick(8);
                     self.program_counter.wrapping_add(1)
                   },
@@ -1953,7 +1955,7 @@ impl CPU {
                     self.program_counter.wrapping_add(1)
                   },
                   LoadByteSource::D8 =>{
-                    self.registers.a = self.read_next_byte();
+                    self.registers.d = self.read_next_byte();
                     self.bus.timer.timer_tick(8);
                     self.program_counter.wrapping_add(2)
                   },
@@ -1993,7 +1995,7 @@ impl CPU {
                     self.program_counter.wrapping_add(1)
                   },
                   LoadByteSource::HL =>{
-                    self.registers.b = self.bus.bus_read(self.registers.get_hl());
+                    self.registers.e = self.bus.bus_read(self.registers.get_hl());
                     self.bus.timer.timer_tick(8);
                     self.program_counter.wrapping_add(1)
                   },
@@ -2003,7 +2005,7 @@ impl CPU {
                     self.program_counter.wrapping_add(1)
                   },
                   LoadByteSource::D8 =>{
-                    self.registers.a = self.read_next_byte();
+                    self.registers.e = self.read_next_byte();
                     self.bus.timer.timer_tick(8);
                     self.program_counter.wrapping_add(2)
                   },
@@ -2043,7 +2045,7 @@ impl CPU {
                     self.program_counter.wrapping_add(1)
                   },
                   LoadByteSource::HL =>{
-                    self.registers.b = self.bus.bus_read(self.registers.get_hl());
+                    self.registers.h = self.bus.bus_read(self.registers.get_hl());
                     self.bus.timer.timer_tick(8);
                     self.program_counter.wrapping_add(1)
                   },
@@ -2053,7 +2055,7 @@ impl CPU {
                     self.program_counter.wrapping_add(1)
                   },
                   LoadByteSource::D8 =>{
-                    self.registers.a = self.read_next_byte();
+                    self.registers.h = self.read_next_byte();
                     self.bus.timer.timer_tick(8);
                     self.program_counter.wrapping_add(2)
                   },
@@ -2093,7 +2095,7 @@ impl CPU {
                     self.program_counter.wrapping_add(1)
                   },
                   LoadByteSource::HL =>{
-                    self.registers.b = self.bus.bus_read(self.registers.get_hl());
+                    self.registers.l = self.bus.bus_read(self.registers.get_hl());
                     self.bus.timer.timer_tick(8);
                     self.program_counter.wrapping_add(1)
                   },
@@ -2103,7 +2105,7 @@ impl CPU {
                     self.program_counter.wrapping_add(1)
                   },
                   LoadByteSource::D8 =>{
-                    self.registers.a = self.read_next_byte();
+                    self.registers.l = self.read_next_byte();
                     self.bus.timer.timer_tick(8);
                     self.program_counter.wrapping_add(2)
                   },
@@ -2220,6 +2222,7 @@ impl CPU {
         self.program_counter.wrapping_add(2)
       }
       Instruction::NOP() => {
+        println!("{}",self.registers.a);
         self.bus.timer.timer_tick(4);
         self.program_counter.wrapping_add(1)
       } 
@@ -2715,8 +2718,8 @@ impl CPU {
   fn jr(&mut self, should_jump: bool) -> u16 {
     if should_jump {
       let r8 = self.read_next_byte() as i8;
-      let new_pc = (self.program_counter.wrapping_add(2) as i32 + r8 as i32) as u16;
-      new_pc
+      let new_pc = (self.program_counter as i16 + r8 as i16) as u16;
+      new_pc.wrapping_add(2)
     } else {
       self.program_counter.wrapping_add(2)
     }

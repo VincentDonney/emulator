@@ -37,7 +37,7 @@ impl Timer{
                     self.tima = self.tma;
                     //Trigger timer interrupt
                 }else{
-                    self.tima.wrapping_add(1);
+                    let _ = self.tima.wrapping_add(1);
                 }
                 self.tima_counter -= inc_rate;
             }

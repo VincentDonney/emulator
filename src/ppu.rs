@@ -1,6 +1,5 @@
 use crate::tile::extract_tile;
-
-pub(crate) struct PPU {
+pub struct PPU {
     pub lcdc:u8,
     pub lcds:u8,
     pub scy:u8,
@@ -12,7 +11,7 @@ pub(crate) struct PPU {
     pub obp1:u8,
     pub wy:u8,
     pub wx:u8,
-    video_buffer:[u8;160*144],
+    pub video_buffer:[u8;160*144],
     oam:[u8;0xA0],
     vram:[u8;0x2000],
     bg_tileset:[u8;256*256],
@@ -24,7 +23,7 @@ impl PPU{
 
     pub fn new()->PPU{
         PPU{
-            lcdc: 0,
+            lcdc: 0x91,
             lcds: 0,
             scy: 0,
             scx: 0,
@@ -37,22 +36,24 @@ impl PPU{
             wx: 0,
             video_buffer: [0u8;160*144],
             oam: [0u8;0xA0],
-            vram: [0u8;0x2000],
+            vram: [0xCA;0x2000],
             bg_tileset: [0u8;256*256],
             win_tileset: [0u8;256*256],
         }
     }
 
     pub fn ppu_step(&mut self){
+        println!("\x1b[93mLy : {}\x1b[0m",self.ly);
+        println!("\x1b[93mLcd : {}\x1b[0m",self.lcdc);
         if self.get_bit(self.lcdc, 7) == 1 {
             match self.ly{
                 0 =>{
                     self.bg_tileset = self.tilesets("bg");
                     self.win_tileset = self.tilesets("win");
                 },
-                144 => render_screen(self.video_buffer),
                 145..=153 => self.ly += 1,
                 154 => self.ly = 0,
+                _=>()
                 
             }
             if self.ly <= 144 {
@@ -60,7 +61,6 @@ impl PPU{
                 self.ly+= 1;
             }
         }
-         
     }
 
     fn get_bit(&self,byte:u8,bit:u8)->u8{
@@ -86,7 +86,7 @@ impl PPU{
     fn render_line(&mut self){
         let y = self.ly;
         for x in 0..160 {
-            self.video_buffer[(x+160*y) as usize] = self.render_pixel(x,y);
+            self.video_buffer[(x as u32+160*y as u32) as usize] = self.render_pixel(x,y);
         }
         self.render_sprites();
         
@@ -140,25 +140,35 @@ impl PPU{
         let tilemap = self.tile_map(bit);
         let mut tile_line = 0;
         let mut background = [0u8;256*256];
+        let mut pos_in_line = 0u32;
+        //For each address in tilemap
         for i in tilemap.0..tilemap.1 {
+            //Read tile index from VRAM
             let tile_index =  self.vram_read(i);
+            //Use corresponding addressing mode to get tile address in VRAM
             let tile_address = self.addressing_mode(tile_index);
             let mut tile = [0u8;16];
+            //Build tile
             for j in 0..16 {
                 tile[j as usize] = self.vram_read(tile_address+j);
             }
+            //Get pixels from tile
             let tile_pixels = extract_tile(tile);
             
-            if i%32 == 0 {
+            if pos_in_line%32 == 0 && pos_in_line != 0{
                 tile_line += 8;
             }
+            //For each  line
             for k in 0..8 {
+                //For each pixel
                 for l in 0..8 {
-                    background[(256*tile_line+256*k+l+8*i%32) as usize] = tile_pixels[k as usize][l as usize];
+                    background[(256*tile_line+256*k+l+8*(pos_in_line%32)) as usize] = tile_pixels[k as usize][l as usize];
                 }
             }
+            pos_in_line += 1;
             
         }
+    
         background        
     }
 
