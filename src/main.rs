@@ -19,8 +19,7 @@ fn main() {
         let mut screen = gpu::Screen::new();
         let video_buff = rx1.recv().unwrap();
         screen.render_screen(video_buff);
-        screen.joypad.
-        tx2.send(screen.joypad).unwrap();
+        let _= tx2.send(screen.joypad);
     });
 
     thread::spawn(move || {
