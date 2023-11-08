@@ -14,11 +14,12 @@ pub struct PPU {
     pub wy:u8,
     pub wx:u8,
     pub video_buffer:[u8;160*144],
-    oam:[u8;0xA0],
-    vram:[u8;0x2000],
-    bg_tileset:[u8;256*256],
-    win_tileset:[u8;256*256],
-
+    pub oam:[u8;0xA0],
+    pub vram:[u8;0x2000],
+    pub bg_tileset:[u8;256*256],
+    pub win_tileset:[u8;256*256],
+    pub vblank_interrupt:u8,
+    pub stat_interrupt:u8
 }
 
 impl PPU{
@@ -38,30 +39,43 @@ impl PPU{
             wx: 0,
             video_buffer: [0u8;160*144],
             oam: [0u8;0xA0],
-            vram: [0xCA;0x2000],
+            vram: [0;0x2000],
             bg_tileset: [0u8;256*256],
             win_tileset: [0u8;256*256],
+            vblank_interrupt: 0,
+            stat_interrupt: 0,
         }
     }
 
     pub fn ppu_step(&mut self){
+        if self.ly == self.lyc && (self.lcds & 0x40) > 0{
+            //raise a STAT interrupt
+            self.stat_interrupt = 1;
+        }
+
         if self.get_bit(self.lcdc, 7) == 1 {
             match self.ly{
-                0 =>{
-                    self.bg_tileset = self.tilesets("bg");
-                    self.win_tileset = self.tilesets("win");
-                },
-                144..=153 => self.ly += 1,
+                144 => {
+                    self.ly += 1;
+                    // raise VBlank interrupt
+                    self.vblank_interrupt = 1;
+                    
+                }
+                145..=153 => self.ly += 1,
                 154 => self.ly = 0,
                 _=>()
                 
             }
             if self.ly < 144 {
+                self.bg_tileset = self.tilesets("bg");
+                self.win_tileset = self.tilesets("win");
                 self.render_line();
                 self.ly+= 1;
             }
-        }
+        }   
     }
+
+    
 
     fn get_bit(&self,byte:u8,bit:u8)->u8{
         (byte >> bit) & 1

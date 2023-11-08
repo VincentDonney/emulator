@@ -5,7 +5,8 @@ pub struct Timer{
     tac:u8,
     pub cycles_counter:u32,
     div_counter:u32,
-    tima_counter:u32
+    tima_counter:u32,
+    pub timer_interrupt:u8
 }
 
 impl Timer{
@@ -17,7 +18,8 @@ impl Timer{
             tac: 0,
             cycles_counter: 0,
             div_counter: 0,
-            tima_counter: 0
+            tima_counter: 0,
+            timer_interrupt:0
         }
     }
 
@@ -36,6 +38,7 @@ impl Timer{
                 if self.tima == 0xFF{
                     self.tima = self.tma;
                     //Trigger timer interrupt
+                    self.timer_interrupt = 1;
                 }else{
                     let _ = self.tima.wrapping_add(1);
                 }

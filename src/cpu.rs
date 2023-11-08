@@ -9,15 +9,16 @@ pub struct CPU{
     stack_pointer:u16,
     pub bus:MemoryBus,
     pub is_halted:bool,
-    ime:bool,
-    ie:u8,
-    if_reg:u8,
+    
 }
 pub struct MemoryBus{
     rom: Vec<u8>,
     wram:[u8;0x2000],
     hram:[u8;0x80],
     pub ppu:ppu::PPU,
+    ime:bool,
+    ie:u8,
+    if_reg:u8,
     pub timer:Timer
 }
 
@@ -53,16 +54,17 @@ impl MemoryBus {
       0xFF00 =>todo!(),//Joypad 
       0xFF01..=0xFF02 => panic!("Serial transfer Link Cable"),
       0xFF04..=0xFF07 =>self.timer.timer_read(address), //Timer
-      0xFF0F =>todo!(), //interrupt flags
+      0xFF0F =>self.if_reg, //IF interrupt flags
       0xFF40..=0xFF4B => self.lcd_read(address),
       0xFF4C..=0xFF7F => panic!(),
       0xFF80..=0xFFFE=>self.hram_read(address),//HRAM
-      0xFFFF =>todo!(),//interrupt enable
+      0xFFFF =>self.ie,//IE interrupt enable
       _ =>0
     }
   }
 
   fn bus_write(&mut self,address:u16,val:u8){
+    println!("\x1b[93mAddress: {}\x1b[0m",address);
     match address{
       0x0000..=0x7FFF => (), //ROM
       0x8000..=0x9FFF => self.ppu.vram_write(address,val), //VRAM
@@ -74,10 +76,11 @@ impl MemoryBus {
       0xFF00 =>println!("\x1b[93mJoypad\x1b[0m"),//Joypad 
       0xFF01..=0xFF02 => (),
       0xFF04..=0xFF07 =>self.timer.timer_write(address, val), //Timer
+      0xFF0F =>self.if_reg = val, //IF interrupt flags
       0xFF40..=0xFF4B => self.lcd_write(address,val),
       0xFF4C..=0xFF7F => (),
       0xFF80..=0xFFFE=>self.hram_write(address,val),//HRAM
-      0xFFFF =>println!("\x1b[93mIE\x1b[0m"),//interrupt enable
+      0xFFFF =>self.ie = val,//IE interrupt enable
       _ =>println!("\x1b[93mWrite to {}\x1b[0m",address)
     }
     
@@ -130,7 +133,7 @@ impl MemoryBus {
   }
 }
 
-enum EmulatorError {
+pub enum EmulatorError {
   InvalidOpcode,
   MemoryReadError,
   MemoryWriteError,
@@ -164,6 +167,9 @@ impl CPU {
       wram:[0u8;0x2000],
       hram:[0u8;0x80],
       ppu:ppu::PPU::new(),
+      ime: false,
+      ie: 0,
+      if_reg: 0,
       timer: Timer::new()
     };
     CPU {
@@ -172,9 +178,7 @@ impl CPU {
       stack_pointer: 0xFFFE,
       is_halted: false,
       bus: mem_bus,
-      ime: true,
-      ie: 0,
-      if_reg: 0
+      
     }
   }
 
@@ -2233,18 +2237,18 @@ impl CPU {
       }
       Instruction::RETI() => {
         self.return_(true);
-        self.ime = true;
+        self.bus.ime = true;
         self.bus.timer.timer_tick(16);
         self.program_counter.wrapping_add(1)
 
       }
       Instruction::EI() => {
-        self.ime = true;
+        self.bus.ime = true;
         self.bus.timer.timer_tick(4);
         self.program_counter.wrapping_add(1)
       }
       Instruction::DI() => {
-        self.ime = false;
+        self.bus.ime = false;
         self.bus.timer.timer_tick(4);
         self.program_counter.wrapping_add(1)
       }
@@ -2742,11 +2746,23 @@ impl CPU {
       self.program_counter.wrapping_add(1)
     }
   }
-  fn handle_interrupts(&mut self) -> Result<(), EmulatorError> {
-    if self.ime {
-        let interrupt_flags = self.ie & self.if_reg;
+  pub fn interrupts(&mut self) -> Result<(), EmulatorError> {
+    if self.bus.ppu.vblank_interrupt == 1 {
+        self.bus.if_reg = self.bus.if_reg | (1 << 0);
+
+    }
+    if self.bus.ppu.stat_interrupt == 1 {
+      self.bus.if_reg = self.bus.if_reg | (1 << 1);
+    }
+
+    if self.bus.timer.timer_interrupt == 1 {
+      self.bus.if_reg = self.bus.if_reg | (1 << 2);
+    }
+
+    if self.bus.ime {
+        let interrupt_flags = self.bus.ie & self.bus.if_reg;
         if interrupt_flags != 0 {
-            self.ime = false; // Disable further interrupts
+            self.bus.ime = false; // Disable further interrupts
 
             if interrupt_flags & 0b00001 != 0 {
                 self.handle_interrupt(0x0040)?; // V-Blank interrupt
@@ -2765,19 +2781,20 @@ impl CPU {
   }
 
   fn handle_interrupt(&mut self, addr: u16) -> Result<(), EmulatorError> {
+    //Do nothing during 2 cycles 
+    self.bus.timer.timer_tick(2);
     // Push the return address onto the stack
     let pc = self.program_counter;
     self.push(pc);
-
-
-    // Disable further interrupts while servicing the current one
-    self.ime = false;
-
+    self.bus.timer.timer_tick(2);
+    
     // Jump to the interrupt handler
     self.program_counter = addr;
-
     Ok(())
   }
+
+  
+
     
 }
 
