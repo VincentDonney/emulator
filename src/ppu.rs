@@ -48,12 +48,11 @@ impl PPU{
     }
 
     pub fn ppu_step(&mut self){
-        if self.ly == self.lyc && (self.lcds & 0x40) > 0{
-            //raise a STAT interrupt
-            self.stat_interrupt = 1;
-        }
-
         if self.get_bit(self.lcdc, 7) == 1 {
+            if self.ly == self.lyc && (self.lcds & 0x40) > 0{
+                //raise a STAT interrupt
+                self.stat_interrupt = 1;
+            }
             match self.ly{
                 144 => {
                     self.ly += 1;

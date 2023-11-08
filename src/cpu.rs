@@ -1697,7 +1697,7 @@ impl CPU {
                   LoadByteSource::D8 => {
                     self.bus.bus_write(self.registers.get_hl(), self.read_next_byte());
                     self.bus.timer.timer_tick(8);
-                    self.program_counter.wrapping_add(1)
+                    self.program_counter.wrapping_add(2)
                   },
                   _=>{panic!{"Err:"}}
                 }
@@ -1707,7 +1707,7 @@ impl CPU {
                   LoadByteSource::D16=>{
                     self.stack_pointer = self.read_next_word();
                     self.bus.timer.timer_tick(8);
-                    self.program_counter.wrapping_add(1)
+                    self.program_counter.wrapping_add(3)
                   },
                   LoadByteSource::HL=>{
                     self.stack_pointer =self.registers.get_hl();
@@ -1799,7 +1799,7 @@ impl CPU {
                     self.program_counter.wrapping_add(1)
                   },
                   LoadByteSource::A8 =>{
-                    self.registers.a = self.bus.bus_read(self.read_next_byte() as u16);
+                    self.registers.a = self.bus.bus_read(0xFF00 | self.read_next_byte() as u16);
                     self.bus.timer.timer_tick(12);
                     self.program_counter.wrapping_add(2)
                   },
@@ -2119,7 +2119,7 @@ impl CPU {
               LoadByteTarget::A16 =>{
                 match source{
                   LoadByteSource::A =>{
-                    self.bus.bus_write(self.read_next_byte() as u16, self.registers.a);
+                    self.bus.bus_write(0xFF00 | self.read_next_byte() as u16, self.registers.a);
                     self.bus.timer.timer_tick(16);
                     self.program_counter.wrapping_add(3)
                   },
