@@ -7,7 +7,7 @@ const HEIGHT: usize = 144;
 pub struct Screen{
     window: Window,
     buffer: Vec<u32>,
-    joypad: Joypad,
+    pub joypad: Joypad,
 }
 
 pub struct Joypad {
