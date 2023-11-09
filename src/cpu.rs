@@ -2119,7 +2119,7 @@ impl CPU {
               LoadByteTarget::A16 =>{
                 match source{
                   LoadByteSource::A =>{
-                    self.bus.bus_write(0xFF00 | self.read_next_byte() as u16, self.registers.a);
+                    self.bus.bus_write(self.read_next_byte() as u16, self.registers.a);
                     self.bus.timer.timer_tick(16);
                     self.program_counter.wrapping_add(3)
                   },
@@ -2132,7 +2132,7 @@ impl CPU {
                 }
               },
               LoadByteTarget::A8 =>{
-                self.bus.bus_write(self.read_next_byte() as u16, self.registers.a);
+                self.bus.bus_write(0xFF00 | self.read_next_byte() as u16, self.registers.a);
                 self.bus.timer.timer_tick(12);
                 self.program_counter.wrapping_add(2)
               },

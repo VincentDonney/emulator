@@ -9,9 +9,7 @@ mod gpu;
 use std::thread;
 use std::sync::mpsc;
 
-fn main() {  
-     
-
+fn main() {     
 
     let (tx1, rx1) = mpsc::channel();
     let (tx2, rx2) = mpsc::channel();
