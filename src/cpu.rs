@@ -9,6 +9,9 @@ pub struct CPU{
     stack_pointer:u16,
     pub bus:MemoryBus,
     pub is_halted:bool,
+    ei:u8,
+    di:u8,
+    last_pc:u16
     
 }
 pub struct MemoryBus{
@@ -61,10 +64,10 @@ impl MemoryBus {
       0xFFFF =>self.ie,//IE interrupt enable
       _ =>0
     }
+    
   }
 
   fn bus_write(&mut self,address:u16,val:u8){
-    println!("\x1b[93mAddress: {}\x1b[0m",address);
     match address{
       0x0000..=0x7FFF => (), //ROM
       0x8000..=0x9FFF => self.ppu.vram_write(address,val), //VRAM
@@ -178,6 +181,9 @@ impl CPU {
       stack_pointer: 0xFFFE,
       is_halted: false,
       bus: mem_bus,
+      ei:0,
+      di:0,
+      last_pc:0
       
     }
   }
@@ -193,6 +199,7 @@ impl CPU {
   }
 
   pub fn step(&mut self) {
+    
     let mut instruction_byte = self.bus.bus_read(self.program_counter);
     
     let prefixed = instruction_byte == 0xCB;
@@ -211,9 +218,12 @@ impl CPU {
 
 
   fn execute(&mut self, instruction: Instruction) ->u16{
+    self.update_ime();
+    self.last_pc = self.program_counter;
     let instruction_name = instruction_name(&instruction);
-    println!("Executing {} PC = {:#06x}, a: {} b : {} c :{} d : {} e: {} h: {} l: {} lcdc :{:08b} ly: {} Z: {} S: {} HC: {} C: {}", instruction_name,self.program_counter,self.registers.a
-  , self.registers.b,self.registers.c,self.registers.d,self.registers.e,self.registers.h,self.registers.l,self.bus.ppu.lcdc,self.bus.ppu.ly,self.registers.f.zero,self.registers.f.subtract,self.registers.f.half_carry,self.registers.f.carry);
+    println!("Executing {} PC = {:#06x}, a: {} b : {} c :{} d : {} e: {} h: {} l: {} lcdc :{:08b} ly: {}, interrupt: {}, SP: {}", instruction_name,self.program_counter,self.registers.a
+  , self.registers.b,self.registers.c,self.registers.d,self.registers.e,self.registers.h,self.registers.l,self.bus.ppu.lcdc,self.bus.ppu.ly,self.bus.if_reg,self.stack_pointer);
+    
     match instruction { 
       Instruction::ADD(target) => {
         match target {
@@ -286,7 +296,7 @@ impl CPU {
             self.bus.timer.timer_tick(8);
             self.program_counter.wrapping_add(1)
           }
-          _ => {self.program_counter}
+          _ => {panic!()}
         }
       },
       Instruction::ADDHL(target) =>{
@@ -776,7 +786,7 @@ impl CPU {
             self.program_counter.wrapping_add(1)
           }
           IncDecTarget::SP =>{
-            let _ = self.stack_pointer.wrapping_add(1);
+            self.stack_pointer = self.stack_pointer.wrapping_add(1);
             self.bus.timer.timer_tick(8);
             self.program_counter.wrapping_add(1)
           }
@@ -863,7 +873,7 @@ impl CPU {
             self.program_counter.wrapping_add(1)
           }
           IncDecTarget::SP =>{
-            let _ = self.stack_pointer.wrapping_sub(1);
+            self.stack_pointer = self.stack_pointer.wrapping_sub(1);
             self.bus.timer.timer_tick(8);
             self.program_counter.wrapping_add(1)
           }
@@ -1684,8 +1694,8 @@ impl CPU {
                     self.program_counter.wrapping_add(3)
                   },
                   LoadByteSource::SP=>{
-                    let r8 = self.read_next_byte() as i8 as i16;
-                    let sp = self.stack_pointer as i16;
+                    let r8 = self.read_next_byte() as i8 as i32;
+                    let sp = self.stack_pointer as i32;
                     self.registers.set_hl(sp.wrapping_add(r8) as u16);
                     self.registers.f.zero = false;
                     self.registers.f.subtract = false;
@@ -1706,15 +1716,15 @@ impl CPU {
                 match source{
                   LoadByteSource::D16=>{
                     self.stack_pointer = self.read_next_word();
-                    self.bus.timer.timer_tick(8);
-                    self.program_counter.wrapping_add(3)
-                  },
-                  LoadByteSource::HL=>{
-                    self.stack_pointer =self.registers.get_hl();
                     self.bus.timer.timer_tick(12);
                     self.program_counter.wrapping_add(3)
                   },
-                  _=>{self.program_counter.wrapping_add(1)}
+                  LoadByteSource::HL=>{
+                    self.stack_pointer = self.registers.get_hl();
+                    self.bus.timer.timer_tick(8);
+                    self.program_counter.wrapping_add(1)
+                  },
+                  _=>{panic!()}
                 }
               },
               LoadByteTarget::HLI => {
@@ -1809,9 +1819,9 @@ impl CPU {
                     self.program_counter.wrapping_add(3)
                   },
                   LoadByteSource::FF00C =>{
-                    self.registers.a = self.bus.bus_read(self.registers.c as u16);
+                    self.registers.a = self.bus.bus_read(0xFF00 | self.registers.c as u16);
                     self.bus.timer.timer_tick(8);
-                    self.program_counter.wrapping_add(2)
+                    self.program_counter.wrapping_add(1)
                   },
                   _ => {self.program_counter.wrapping_add(1)}
                 }
@@ -2013,7 +2023,7 @@ impl CPU {
                     self.bus.timer.timer_tick(8);
                     self.program_counter.wrapping_add(2)
                   },
-                  _ => {self.program_counter.wrapping_add(1)}
+                  _ => {panic!()}
                 }
               },
               LoadByteTarget::H=> {
@@ -2063,7 +2073,7 @@ impl CPU {
                     self.bus.timer.timer_tick(8);
                     self.program_counter.wrapping_add(2)
                   },
-                  _ => {self.program_counter.wrapping_add(1)}
+                  _ => {panic!()}
                 }
               },
               LoadByteTarget::L => {
@@ -2113,7 +2123,7 @@ impl CPU {
                     self.bus.timer.timer_tick(8);
                     self.program_counter.wrapping_add(2)
                   },
-                  _ => {self.program_counter.wrapping_add(1)}
+                  _ => {panic!()}
                 }
               },
               LoadByteTarget::A16 =>{
@@ -2128,7 +2138,7 @@ impl CPU {
                     self.bus.timer.timer_tick(20);
                     self.program_counter.wrapping_add(3)
                   },
-                  _=>{self.program_counter.wrapping_add(1)}
+                  _=>{panic!()}
                 }
               },
               LoadByteTarget::A8 =>{
@@ -2137,9 +2147,9 @@ impl CPU {
                 self.program_counter.wrapping_add(2)
               },
               LoadByteTarget::FF00C => {
-                self.bus.bus_write(self.registers.c as u16, self.registers.a);
+                self.bus.bus_write(0xFF00 | self.registers.c as u16, self.registers.a);
                 self.bus.timer.timer_tick(8);
-                self.program_counter.wrapping_add(2)
+                self.program_counter.wrapping_add(1)
               },
             }  
           }
@@ -2162,13 +2172,7 @@ impl CPU {
               StackTarget::BC => self.registers.set_bc(result),
               StackTarget::DE => self.registers.set_de(result),
               StackTarget::HL => self.registers.set_hl(result),
-              StackTarget::AF => {
-                self.registers.f.zero = result == 0;
-                self.registers.f.subtract = false;
-                self.registers.f.half_carry =false;
-                self.registers.f.carry = false;
-                self.registers.set_af(result)
-              },
+              StackTarget::AF => self.registers.set_af(result),
           };
           self.bus.timer.timer_tick(16);
           self.program_counter.wrapping_add(1)
@@ -2226,7 +2230,6 @@ impl CPU {
         self.program_counter.wrapping_add(2)
       }
       Instruction::NOP() => {
-        println!("{}",self.registers.a);
         self.bus.timer.timer_tick(4);
         self.program_counter.wrapping_add(1)
       } 
@@ -2236,19 +2239,18 @@ impl CPU {
         self.program_counter.wrapping_add(1)
       }
       Instruction::RETI() => {
-        self.return_(true);
+        let ret = self.return_(true);
         self.bus.ime = true;
         self.bus.timer.timer_tick(16);
-        self.program_counter.wrapping_add(1)
-
+        ret
       }
       Instruction::EI() => {
-        self.bus.ime = true;
+        self.ei += 3;
         self.bus.timer.timer_tick(4);
         self.program_counter.wrapping_add(1)
       }
       Instruction::DI() => {
-        self.bus.ime = false;
+        self.di += 3;
         self.bus.timer.timer_tick(4);
         self.program_counter.wrapping_add(1)
       }
@@ -2313,21 +2315,18 @@ impl CPU {
       },
     }
   }
-  fn push(&mut self, val:u16){
+  fn push(&mut self, val:u16){  
     self.stack_pointer = self.stack_pointer.wrapping_sub(1);
     self.bus.bus_write(self.stack_pointer, ((val & 0xFF00) >> 8) as u8);
     self.stack_pointer = self.stack_pointer.wrapping_sub(1);
-    self.bus.bus_write(self.stack_pointer, (val & 0xFF) as u8);
-        
+    self.bus.bus_write(self.stack_pointer, (val & 0xFF) as u8);    
   }
 
   fn pop(&mut self)->u16{
     let lsb = self.bus.bus_read(self.stack_pointer) as u16;
     self.stack_pointer = self.stack_pointer.wrapping_add(1);
-    
     let msb = self.bus.bus_read(self.stack_pointer) as u16;
     self.stack_pointer = self.stack_pointer.wrapping_add(1);
-    
     (msb << 8) | lsb
   }
 
@@ -2701,8 +2700,9 @@ impl CPU {
 
   fn jump(&mut self, should_jump: bool) -> u16 {
     if should_jump {
-      let least_significant_byte = self.bus.bus_read(self.program_counter + 1) as u16;
-      let most_significant_byte = self.bus.bus_read(self.program_counter + 2) as u16;
+      let least_significant_byte = self.bus.bus_read(self.program_counter.wrapping_add(1)) as u16;
+      let most_significant_byte = self.bus.bus_read(self.program_counter.wrapping_add(2)) as u16;
+      println!("{}",(most_significant_byte << 8) | least_significant_byte);
         (most_significant_byte << 8) | least_significant_byte
     } else {
       self.program_counter.wrapping_add(3)
@@ -2746,6 +2746,7 @@ impl CPU {
       self.program_counter.wrapping_add(1)
     }
   }
+  
   pub fn interrupts(&mut self) -> Result<(), EmulatorError> {
     if self.bus.ppu.vblank_interrupt == 1 {
         self.bus.if_reg = self.bus.if_reg | (1 << 0);
@@ -2765,15 +2766,21 @@ impl CPU {
             self.bus.ime = false; // Disable further interrupts
 
             if interrupt_flags & 0b00001 != 0 {
-                self.handle_interrupt(0x0040)?; // V-Blank interrupt
+              self.bus.ppu.vblank_interrupt = 0;
+              self.bus.if_reg = self.bus.if_reg & !(1 << 0);
+              self.handle_interrupt(0x0040)?; // V-Blank interrupt
             } else if interrupt_flags & 0b00010 != 0 {
-                self.handle_interrupt(0x0048)?; // LCD STAT interrupt
+              self.bus.ppu.stat_interrupt = 0;
+              self.bus.if_reg = self.bus.if_reg & !(1 << 1);
+              self.handle_interrupt(0x0048)?; // LCD STAT interrupt
             } else if interrupt_flags & 0b00100 != 0 {
-                self.handle_interrupt(0x0050)?; // Timer interrupt
+              self.bus.timer.timer_interrupt = 0;
+              self.bus.if_reg = self.bus.if_reg & !(1 << 2);
+              self.handle_interrupt(0x0050)?; // Timer interrupt
             } else if interrupt_flags & 0b01000 != 0 {
-                self.handle_interrupt(0x0058)?; // Serial interrupt
+              self.handle_interrupt(0x0058)?; // Serial interrupt
             } else if interrupt_flags & 0b10000 != 0 {
-                self.handle_interrupt(0x0060)?; // Joypad interrupt
+              self.handle_interrupt(0x0060)?; // Joypad interrupt
             }
         }
     }
@@ -2784,8 +2791,9 @@ impl CPU {
     //Do nothing during 2 cycles 
     self.bus.timer.timer_tick(2);
     // Push the return address onto the stack
-    let pc = self.program_counter;
+    let pc = self.last_pc;
     self.push(pc);
+    println!("{}",self.bus.bus_read(0xCFFD));
     self.bus.timer.timer_tick(2);
     
     // Jump to the interrupt handler
@@ -2794,7 +2802,26 @@ impl CPU {
   }
 
   
-
+  fn update_ime(&mut self){
+    //Test if there is a delayed DI instruction
+    if self.di > 1 {
+      self.di -= 1;
+    }
+    //If delay ended, update IME
+    if self.di == 1 {
+      self.bus.ime = false;
+      self.di = 0;
+    }
+    //Test if there is a delayed EI instruction
+    if self.ei > 1 {
+      self.ei -= 1; 
+    }
+    //If delay ended, update IME
+    if self.ei == 1 {
+      self.bus.ime = true;
+      self.ei = 0;
+    }
+  }
     
 }
 
@@ -3171,7 +3198,7 @@ fn instruction_name(instruction: &Instruction) -> String {
         }
       },
       Instruction::POP(target) => {
-        let str = "PUSH ".to_string();
+        let str = "POP ".to_string();
         match target {
           StackTarget::AF => str + "AF",
           StackTarget::BC => str + "BC",
