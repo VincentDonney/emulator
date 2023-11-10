@@ -13,9 +13,8 @@ fn main() {
      
 
     let mut cpu = cpu::CPU::new();
-    let mut screen = gpu::Screen::new();
     let mut i = 0;
-    while i < 16000 {
+    while i < 62000{
         let _ = cpu.interrupts();
         print!("{} ",i);
         cpu.step();
