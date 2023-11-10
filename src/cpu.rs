@@ -134,6 +134,7 @@ impl MemoryBus {
 }
 
 pub enum EmulatorError {
+  /*
   InvalidOpcode,
   MemoryReadError,
   MemoryWriteError,
@@ -141,6 +142,7 @@ pub enum EmulatorError {
   StackUnderflow,
   InvalidAddress,
   InterruptHandlingError,
+  */
   // Add more error variants as needed
 }
 

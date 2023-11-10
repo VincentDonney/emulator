@@ -15,29 +15,29 @@ fn main() {
     let (tx2, rx2) = mpsc::channel();
     thread::spawn(move || {
         let mut screen = gpu::Screen::new();
-        let video_buff = rx1.recv().unwrap();
-        screen.render_screen(video_buff);
-        let _= tx2.send(screen.joypad);
+        screen.render_screen(&rx1, &tx2);
+
     });
 
-    thread::spawn(move || {
-        let mut cpu = cpu::CPU::new();
-        let mut i = 0;
-        while i < 16052 {
-            let _= tx1.send(cpu.bus.ppu.video_buffer);
-            let _joypad = rx2.recv().unwrap();
-            let _ = cpu.interrupts();
-            print!("{} ",i);
-            cpu.step();
-            if cpu.bus.timer.cycles_counter >= 456 {
-                if cpu.bus.ppu.ly == 144{
-                }
-                cpu.bus.ppu.ppu_step();
-                
-                cpu.bus.timer.cycles_counter = cpu.bus.timer.cycles_counter % 456;
+    
+
+    let mut cpu = cpu::CPU::new();
+    let mut i = 0;
+    let mut _joypad;
+    loop {
+        let _= tx1.send(cpu.bus.ppu.video_buffer);
+        _joypad = rx2.recv().unwrap();
+        let _ = cpu.interrupts();
+        print!("{} ",i);
+        cpu.step();
+        if cpu.bus.timer.cycles_counter >= 456 {
+            if cpu.bus.ppu.ly == 144{
             }
-            i+=1;
+            cpu.bus.ppu.ppu_step();
+            
+            cpu.bus.timer.cycles_counter = cpu.bus.timer.cycles_counter % 456;
         }
-    });
+        i+=1;
+    }
     
 }

@@ -1,15 +1,18 @@
-const TILE_SIZE: usize = 16;
-const TILE_DATA_ADDRESS_RANGE: std::ops::Range<usize> = 0x8000..0x9800;
-const TILE_DATA_ADDRESS_RANGE_8800: std::ops::Range<usize> = 0x8800..0x9000;
+//const TILE_SIZE: usize = 16;
+//const TILE_DATA_ADDRESS_RANGE: std::ops::Range<usize> = 0x8000..0x9800;
+//const TILE_DATA_ADDRESS_RANGE_8800: std::ops::Range<usize> = 0x8800..0x9000;
 
+/*
 #[derive(Clone)]
 pub struct Tile {
     pixel_data: [[u8; 8]; 8],
 }
-
+*/
+/*
 pub struct TileDataTable {
     data: Vec<Tile>,
 }
+*/
 
 //16 bytes from vram into Tile object
 pub fn extract_tile(tile_data: [u8; 16]) -> [[u8; 8]; 8] {
@@ -39,6 +42,8 @@ pub fn extract_tile(tile_data: [u8; 16]) -> [[u8; 8]; 8] {
     //0 = transparent; 1 = light gray: 2 = dark gray: 3 = black;
     tile
 }
+
+/*
 
 //get 0x8000 adressing from 0x8800 adressing method (in case it is needed)
 fn get_tile_index(tile_number: i8) -> usize {
@@ -73,3 +78,4 @@ impl TileDataTable {
     }
     
 }
+*/

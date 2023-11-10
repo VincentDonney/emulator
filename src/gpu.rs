@@ -1,5 +1,6 @@
 use minifb::{Key, Window, WindowOptions, KeyRepeat};
-use std::time::{Duration, Instant};
+use std::{time::{Duration, Instant}, sync::mpsc::Receiver};
+use crate::mpsc::*;
 
 const WIDTH: usize = 160;
 const HEIGHT: usize = 144;
@@ -10,11 +11,9 @@ pub struct Screen{
     pub joypad: Joypad,
 }
 
+#[derive(Clone)]
 pub struct Joypad {
-    directions_select: bool,
-    buttons_select: bool,
     buttons: u8,
-
 }
 
 impl Screen{
@@ -41,7 +40,7 @@ impl Screen{
 
 
 
-    pub fn render_screen(&mut self, video_buffer: [u8;160*144]) {
+    pub fn render_screen(&mut self, rx1: &Receiver<[u8;160*144]>, tx2: &Sender<Joypad>) {
 
     
         self.window.limit_update_rate(Some(std::time::Duration::from_micros(16600))); // ~60fps
@@ -49,8 +48,12 @@ impl Screen{
     
         let mut fps_timer = Instant::now();
         let mut fps_counter = 0;
+        let mut video_buffer: [u8; 160*144];
+
     
         while self.window.is_open() && !self.window.is_key_down(Key::Escape) {
+             video_buffer = rx1.recv().unwrap();
+
 
             let (width, height) = self.window.get_size();
 
@@ -83,47 +86,46 @@ impl Screen{
             self.window.get_keys_pressed(KeyRepeat::No).iter().for_each(|key|
                 match key {
                     //button A
-                    Key::A => Joypad::register_input(0, self.joypad.buttons_select, self.joypad.buttons),
-                    Key::W => Joypad::register_input(0, self.joypad.buttons_select, self.joypad.buttons),
+                    Key::A => {self.joypad.buttons = Joypad::register_input(0, String::from("buttons"), self.joypad.clone())},
+                    Key::W => {self.joypad.buttons = Joypad::register_input(0, String::from("buttons"), self.joypad.clone())},
 
                     //button B
-                    Key::B => Joypad::register_input(1, self.joypad.buttons_select, self.joypad.buttons),
-                    Key::X => Joypad::register_input(1, self.joypad.buttons_select, self.joypad.buttons),
+                    Key::B => {self.joypad.buttons = Joypad::register_input(1, String::from("buttons"), self.joypad.clone())},
+                    Key::X => {self.joypad.buttons = Joypad::register_input(1, String::from("buttons"), self.joypad.clone())},
 
                     //button Select
-                    Key::R => Joypad::register_input(2, self.joypad.buttons_select, self.joypad.buttons),
-                    Key::V => Joypad::register_input(2, self.joypad.buttons_select, self.joypad.buttons),
+                    Key::R => {self.joypad.buttons = Joypad::register_input(2, String::from("buttons"), self.joypad.clone())},
+                    Key::V => {self.joypad.buttons = Joypad::register_input(2, String::from("buttons"), self.joypad.clone())},
 
                     //button Start
-                    Key::E => Joypad::register_input(3, self.joypad.buttons_select, self.joypad.buttons),
-                    Key::C => Joypad::register_input(3, self.joypad.buttons_select, self.joypad.buttons),
+                    Key::E => {self.joypad.buttons = Joypad::register_input(3, String::from("buttons"), self.joypad.clone())},
+                    Key::C => {self.joypad.buttons = Joypad::register_input(3, String::from("buttons"), self.joypad.clone())},
 
                     //button Right
-                    Key::D => Joypad::register_input(0, self.joypad.directions_select, self.joypad.buttons),
-                    Key::Right => Joypad::register_input(0, self.joypad.directions_select, self.joypad.buttons),
+                    Key::D => {self.joypad.buttons = Joypad::register_input(0, String::from("dpad"), self.joypad.clone())},
+                    Key::Right => {self.joypad.buttons = Joypad::register_input(0, String::from("dpad"), self.joypad.clone())},
 
                     //button Left
-                    Key::Q => Joypad::register_input(1, self.joypad.directions_select, self.joypad.buttons),
-                    Key::Left => Joypad::register_input(1, self.joypad.directions_select, self.joypad.buttons),
+                    Key::Q => {self.joypad.buttons = Joypad::register_input(1, String::from("dpad"), self.joypad.clone())},
+                    Key::Left => {self.joypad.buttons = Joypad::register_input(1, String::from("dpad"), self.joypad.clone())},
 
                     //button Up
-                    Key::Z => Joypad::register_input(2, self.joypad.directions_select, self.joypad.buttons),
-                    Key::Up => Joypad::register_input(2, self.joypad.directions_select, self.joypad.buttons),
-
+                    Key::Z => {self.joypad.buttons = Joypad::register_input(2, String::from("dpad"), self.joypad.clone())},
+                    Key::Up => {self.joypad.buttons = Joypad::register_input(2, String::from("dpad"), self.joypad.clone())},
 
                     //button Down
-                    Key::S => Joypad::register_input(3, self.joypad.directions_select, self.joypad.buttons),
-                    Key::Down => Joypad::register_input(3, self.joypad.directions_select, self.joypad.buttons),
+                    Key::S => {self.joypad.buttons = Joypad::register_input(3, String::from("dpad"), self.joypad.clone())},
+                    Key::Down => {self.joypad.buttons = Joypad::register_input(3, String::from("dpad"), self.joypad.clone())},
 
 
 
                     _ => (),
                 }
             );
-    
+            let _= tx2.send(self.joypad.clone());
             
             // Update the window buffer and display the changes
-            self.window.update_with_buffer(&self.buffer, width, height).unwrap();
+            self.window.update_with_buffer(&self.buffer, 144, 160).unwrap();
         }
     }
     
@@ -131,21 +133,28 @@ impl Screen{
 
 impl Joypad {
     pub fn new() -> Joypad {
-        let directions_bool = false;
-        let buttons_bool = false;
         let buttons_matrix = 0b00111111;
         Joypad {
-            directions_select: directions_bool,
-            buttons_select: buttons_bool,
             buttons: buttons_matrix,
+
         }
     }
 
-    pub fn register_input(button: u8, select: bool, mut buttons_matrix: u8) {
-        if select {
-            let clear_bit_mask = !(1 << button); // Create a mask with the bit to clear set to 0
-            let new_buttons_matrix = buttons_matrix & clear_bit_mask;
-            buttons_matrix = new_buttons_matrix;
+    pub fn register_input(button: u8, mode: String, mut joypad: Joypad) -> u8 {
+        match mode.as_str() {
+            "dpad" => {
+                let clear_bit_mask = !(1 << button); // Create a mask with the bit to clear set to 0
+                joypad.buttons = joypad.buttons & clear_bit_mask;
+                joypad.buttons = joypad.buttons & !(1 << 4);
+            },
+            "buttons" => {
+                let clear_bit_mask = !(1 << button); // Create a mask with the bit to clear set to 0
+                joypad.buttons = joypad.buttons & clear_bit_mask;
+                joypad.buttons = joypad.buttons & !(1 << 5);
+            },
+            _ => panic!("Wrong mode selection on joypad")
+            
         }
+        joypad.buttons
     }
 }
