@@ -13,7 +13,7 @@ pub struct Screen{
 
 #[derive(Clone)]
 pub struct Joypad {
-    buttons: u8,
+    pub buttons: u8,
 }
 
 impl Screen{
@@ -40,7 +40,7 @@ impl Screen{
 
 
 
-    pub fn render_screen(&mut self, rx1: &Receiver<[u8;160*144]>, tx2: &Sender<Joypad>) {
+    pub fn render_screen(&mut self, rx1: &Receiver<[u8;160*144]>, tx2: &Sender<Joypad>, tx3: &Sender<bool>) {
 
     
         self.window.limit_update_rate(Some(std::time::Duration::from_micros(16600))); // ~60fps
@@ -52,25 +52,33 @@ impl Screen{
 
     
         while self.window.is_open() && !self.window.is_key_down(Key::Escape) {
-             video_buffer = rx1.recv().unwrap();
+            match rx1.try_recv() {
+                Ok(data) => {
+                    video_buffer = data;
+                    
+                    //loop through buffer to change the pixels color
+                    let mut i = 0;
+                    while i < self.buffer.len() {
+                        let mut color_value = 0x00FFFFFF;   //default value
+                        match video_buffer[i] {
+                            0 => color_value = 0x00FFFFFF,  //white pixel
+                            1 => color_value = 0x00A9A9A9,  //light gray pixel
+                            2 => color_value = 0x00545454,  //dark gray pixel
+                            3 => color_value = 0x00000000,  //black pixel
+                            _ => println!("Wrong pixel value while updating the buffer\n"),
+                        }
+                        self.buffer[i] = color_value;
+                        i = i+1;
+                    }
+                },
+                Err(TryRecvError::Disconnected) => {/* handle sender disconnected */}
+                Err(TryRecvError::Empty) => {/* handle no data available yet */}
 
-
-            let (width, height) = self.window.get_size();
-
-            //loop through buffer to change the pixels color
-            let mut i = 0;
-            while i < self.buffer.len() {
-                let mut color_value = 0x00FFFFFF;   //default value
-                match video_buffer[i] {
-                    0 => color_value = 0x00FFFFFF,  //white pixel
-                    1 => color_value = 0x00A9A9A9,  //light gray pixel
-                    2 => color_value = 0x00545454,  //dark gray pixel
-                    3 => color_value = 0x00000000,  //black pixel
-                    _ => println!("Wrong pixel value while updating the buffer\n"),
-                }
-                self.buffer[i] = color_value;
-                i = i+1;
             }
+
+
+            let mut button_pressed: bool = false;
+            
     
             // Calculate fps
             fps_counter += 1;
@@ -86,46 +94,49 @@ impl Screen{
             self.window.get_keys_pressed(KeyRepeat::No).iter().for_each(|key|
                 match key {
                     //button A
-                    Key::A => {self.joypad.buttons = Joypad::register_input(0, String::from("buttons"), self.joypad.clone())},
-                    Key::W => {self.joypad.buttons = Joypad::register_input(0, String::from("buttons"), self.joypad.clone())},
+                    Key::A => {self.joypad.buttons = Joypad::register_input(0, String::from("buttons"), self.joypad.clone()); button_pressed = true},
+                    Key::W => {self.joypad.buttons = Joypad::register_input(0, String::from("buttons"), self.joypad.clone()); button_pressed = true},
 
                     //button B
-                    Key::B => {self.joypad.buttons = Joypad::register_input(1, String::from("buttons"), self.joypad.clone())},
-                    Key::X => {self.joypad.buttons = Joypad::register_input(1, String::from("buttons"), self.joypad.clone())},
+                    Key::B => {self.joypad.buttons = Joypad::register_input(1, String::from("buttons"), self.joypad.clone()); button_pressed = true},
+                    Key::X => {self.joypad.buttons = Joypad::register_input(1, String::from("buttons"), self.joypad.clone()); button_pressed = true},
 
                     //button Select
-                    Key::R => {self.joypad.buttons = Joypad::register_input(2, String::from("buttons"), self.joypad.clone())},
-                    Key::V => {self.joypad.buttons = Joypad::register_input(2, String::from("buttons"), self.joypad.clone())},
+                    Key::R => {self.joypad.buttons = Joypad::register_input(2, String::from("buttons"), self.joypad.clone()); button_pressed = true},
+                    Key::V => {self.joypad.buttons = Joypad::register_input(2, String::from("buttons"), self.joypad.clone()); button_pressed = true},
 
                     //button Start
-                    Key::E => {self.joypad.buttons = Joypad::register_input(3, String::from("buttons"), self.joypad.clone())},
-                    Key::C => {self.joypad.buttons = Joypad::register_input(3, String::from("buttons"), self.joypad.clone())},
+                    Key::E => {self.joypad.buttons = Joypad::register_input(3, String::from("buttons"), self.joypad.clone()); button_pressed = true},
+                    Key::C => {self.joypad.buttons = Joypad::register_input(3, String::from("buttons"), self.joypad.clone()); button_pressed = true},
 
                     //button Right
-                    Key::D => {self.joypad.buttons = Joypad::register_input(0, String::from("dpad"), self.joypad.clone())},
-                    Key::Right => {self.joypad.buttons = Joypad::register_input(0, String::from("dpad"), self.joypad.clone())},
+                    Key::D => {self.joypad.buttons = Joypad::register_input(0, String::from("dpad"), self.joypad.clone()); button_pressed = true},
+                    Key::Right => {self.joypad.buttons = Joypad::register_input(0, String::from("dpad"), self.joypad.clone()); button_pressed = true},
 
                     //button Left
-                    Key::Q => {self.joypad.buttons = Joypad::register_input(1, String::from("dpad"), self.joypad.clone())},
-                    Key::Left => {self.joypad.buttons = Joypad::register_input(1, String::from("dpad"), self.joypad.clone())},
+                    Key::Q => {self.joypad.buttons = Joypad::register_input(1, String::from("dpad"), self.joypad.clone()); button_pressed = true},
+                    Key::Left => {self.joypad.buttons = Joypad::register_input(1, String::from("dpad"), self.joypad.clone()); button_pressed = true},
 
                     //button Up
-                    Key::Z => {self.joypad.buttons = Joypad::register_input(2, String::from("dpad"), self.joypad.clone())},
-                    Key::Up => {self.joypad.buttons = Joypad::register_input(2, String::from("dpad"), self.joypad.clone())},
+                    Key::Z => {self.joypad.buttons = Joypad::register_input(2, String::from("dpad"), self.joypad.clone()); button_pressed = true},
+                    Key::Up => {self.joypad.buttons = Joypad::register_input(2, String::from("dpad"), self.joypad.clone()); button_pressed = true},
 
                     //button Down
-                    Key::S => {self.joypad.buttons = Joypad::register_input(3, String::from("dpad"), self.joypad.clone())},
-                    Key::Down => {self.joypad.buttons = Joypad::register_input(3, String::from("dpad"), self.joypad.clone())},
+                    Key::S => {self.joypad.buttons = Joypad::register_input(3, String::from("dpad"), self.joypad.clone()); button_pressed = true},
+                    Key::Down => {self.joypad.buttons = Joypad::register_input(3, String::from("dpad"), self.joypad.clone()); button_pressed = true},
 
 
 
                     _ => (),
                 }
             );
-            let _= tx2.send(self.joypad.clone());
+            if button_pressed {
+                let _= tx2.send(self.joypad.clone());
+                let _= tx3.send(true);
+            }
             
             // Update the window buffer and display the changes
-            self.window.update_with_buffer(&self.buffer, 144, 160).unwrap();
+            self.window.update_with_buffer(&self.buffer, WIDTH, HEIGHT).unwrap();
         }
     }
     

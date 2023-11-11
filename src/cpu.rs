@@ -11,8 +11,8 @@ pub struct CPU{
     pub is_halted:bool,
     ei:u8,
     di:u8,
-    last_pc:u16
-    
+    last_pc:u16,
+    pub jpad_interrupt: bool,
 }
 pub struct MemoryBus{
     rom: Vec<u8>,
@@ -22,7 +22,8 @@ pub struct MemoryBus{
     ime:bool,
     ie:u8,
     if_reg:u8,
-    pub timer:Timer
+    pub timer:Timer,
+    pub joypad: u8,
 }
 
 impl MemoryBus {
@@ -54,7 +55,7 @@ impl MemoryBus {
       0xE000..=0xFDFF=>0,//ECHO RAM
       0xFE00..=0xFE9F=>self.ppu.oam_read(address),//OAM
       0xFEA0..=0xFEFF=>0,//Not usable
-      0xFF00 =>todo!(),//Joypad 
+      0xFF00 => self.joypad, //Joypad
       0xFF01..=0xFF02 => panic!("Serial transfer Link Cable"),
       0xFF04..=0xFF07 =>self.timer.timer_read(address), //Timer
       0xFF0F =>self.if_reg, //IF interrupt flags
@@ -76,7 +77,7 @@ impl MemoryBus {
       0xE000..=0xFDFF=>(),//ECHO RAM
       0xFE00..=0xFE9F=>self.ppu.oam_write(address,val),//OAM
       0xFEA0..=0xFEFF=>(),//Not usable
-      0xFF00 =>println!("\x1b[93mJoypad\x1b[0m"),//Joypad 
+      0xFF00 => self.joypad = val, //Joypad
       0xFF01..=0xFF02 => (),
       0xFF04..=0xFF07 =>self.timer.timer_write(address, val), //Timer
       0xFF0F =>self.if_reg = val, //IF interrupt flags
@@ -175,7 +176,8 @@ impl CPU {
       ime: false,
       ie: 0,
       if_reg: 0,
-      timer: Timer::new()
+      timer: Timer::new(),
+      joypad: 0b00111111,
     };
     CPU {
       registers: regs,
@@ -185,7 +187,8 @@ impl CPU {
       bus: mem_bus,
       ei:0,
       di:0,
-      last_pc:0
+      last_pc:0,
+      jpad_interrupt: false,
       
     }
   }
@@ -2761,6 +2764,9 @@ impl CPU {
     if self.bus.timer.timer_interrupt == 1 {
       self.bus.if_reg = self.bus.if_reg | (1 << 2);
     }
+    if self.jpad_interrupt{
+      self.bus.if_reg = self.bus.if_reg | (1 << 4);
+    }
 
     if self.bus.ime {
         let interrupt_flags = self.bus.ie & self.bus.if_reg;
@@ -2782,6 +2788,8 @@ impl CPU {
             } else if interrupt_flags & 0b01000 != 0 {
               self.handle_interrupt(0x0058)?; // Serial interrupt
             } else if interrupt_flags & 0b10000 != 0 {
+              self.jpad_interrupt = false;
+              self.bus.if_reg = self.bus.if_reg & !(1 << 4);
               self.handle_interrupt(0x0060)?; // Joypad interrupt
             }
         }
