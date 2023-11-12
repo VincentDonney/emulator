@@ -203,7 +203,7 @@ impl PPU{
                 let y = self.oam[i];
                 let x = self.oam[i+1];
                 let tile_index = self.oam[i+2];
-                let tile_address = 0x0 + (tile_index as u16) * 16;
+                let tile_address = (tile_index as u16) * 16;
                 let flags = self.oam[i+3];
                 let ly = self.ly;
                 let priority =self.get_bit(flags, 7);
@@ -295,7 +295,7 @@ impl PPU{
     fn addressing_mode(&self,tile_index:u8)->u16{
         match self.get_bit(self.lcdc, 4){
             0 =>(0x1000 + (((tile_index as i8) as i16) * 16)) as u16,
-            1 =>0x0 + (tile_index as u16) * 16,
+            1 =>(tile_index as u16) * 16,
             _ =>panic!()
         }
     }

@@ -2676,18 +2676,18 @@ impl CPU {
   
   pub fn interrupts(&mut self) -> Result<(), EmulatorError> {
     if self.bus.ppu.vblank_interrupt == 1 {
-        self.bus.if_reg = self.bus.if_reg | (1 << 0);
+        self.bus.if_reg |= (1 << 0);
 
     }
     if self.bus.ppu.stat_interrupt == 1 {
-      self.bus.if_reg = self.bus.if_reg | (1 << 1);
+      self.bus.if_reg |= (1 << 1);
     }
 
     if self.bus.timer.timer_interrupt == 1 {
-      self.bus.if_reg = self.bus.if_reg | (1 << 2);
+      self.bus.if_reg |= (1 << 2);
     }
     if self.jpad_interrupt{
-      self.bus.if_reg = self.bus.if_reg | (1 << 4);
+      self.bus.if_reg |= (1 << 4);
     }
 
     if self.bus.ime {
@@ -2697,21 +2697,21 @@ impl CPU {
 
             if interrupt_flags & 0b00001 != 0 {
               self.bus.ppu.vblank_interrupt = 0;
-              self.bus.if_reg = self.bus.if_reg & !(1 << 0);
+              self.bus.if_reg &= !(1 << 0);
               self.handle_interrupt(0x0040)?; // V-Blank interrupt
             } else if interrupt_flags & 0b00010 != 0 {
               self.bus.ppu.stat_interrupt = 0;
-              self.bus.if_reg = self.bus.if_reg & !(1 << 1);
+              self.bus.if_reg &= !(1 << 1);
               self.handle_interrupt(0x0048)?; // LCD STAT interrupt
             } else if interrupt_flags & 0b00100 != 0 {
               self.bus.timer.timer_interrupt = 0;
-              self.bus.if_reg = self.bus.if_reg & !(1 << 2);
+              self.bus.if_reg &= !(1 << 2);
               self.handle_interrupt(0x0050)?; // Timer interrupt
             } else if interrupt_flags & 0b01000 != 0 {
               self.handle_interrupt(0x0058)?; // Serial interrupt
             } else if interrupt_flags & 0b10000 != 0 {
               self.jpad_interrupt = false;
-              self.bus.if_reg = self.bus.if_reg & !(1 << 4);
+              self.bus.if_reg &= !(1 << 4);
               self.handle_interrupt(0x0060)?; // Joypad interrupt
             }
         }

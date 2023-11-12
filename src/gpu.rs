@@ -68,7 +68,7 @@ impl Screen{
                             _ => println!("Wrong pixel value while updating the buffer\n"),
                         }
                         self.buffer[i] = color_value;
-                        i = i+1;
+                        i += 1;
                     }
                 },
                 Err(TryRecvError::Disconnected) => {/* handle sender disconnected */}
@@ -157,15 +157,15 @@ impl Joypad {
             "dpad" => {
                 if joypad.buttons & (1 << 5) != 0{
                     let clear_bit_mask = !(1 << button); // Create a mask with the bit to clear set to 0
-                    joypad.buttons = joypad.buttons & clear_bit_mask;
-                    joypad.buttons = joypad.buttons & !(1 << 4);
+                    joypad.buttons &= clear_bit_mask;
+                    joypad.buttons &= !(1 << 4);
                 }
             },
             "buttons" => {
                 if joypad.buttons & (1 << 4) != 0{
                     let clear_bit_mask = !(1 << button); // Create a mask with the bit to clear set to 0
-                    joypad.buttons = joypad.buttons & clear_bit_mask;
-                    joypad.buttons = joypad.buttons & !(1 << 5);
+                    joypad.buttons &= clear_bit_mask;
+                    joypad.buttons &= !(1 << 5);
                 }
             },
             _ => panic!("Wrong mode selection on joypad")

@@ -47,7 +47,7 @@ fn main() {
             cpu.bus.ppu.ppu_step();
 
             
-            cpu.bus.timer.cycles_counter = cpu.bus.timer.cycles_counter % 456;
+            cpu.bus.timer.cycles_counter %= 456;
         }
         println!(" ly: {}",cpu.bus.ppu.ly);
 

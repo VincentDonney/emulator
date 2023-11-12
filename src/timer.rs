@@ -56,10 +56,10 @@ impl Timer{
 
     pub fn timer_read(&self,address:u16)->u8{
         match address{
-            0xFF04 =>return self.div as u8,
-            0xFF05 =>return self.tima,
-            0xFF06 =>return self.tma,
-            0xFF07 =>return self.tac, 
+            0xFF04 =>self.div as u8,
+            0xFF05 =>self.tima,
+            0xFF06 =>self.tma,
+            0xFF07 =>self.tac, 
             _=> unreachable!("Invalid timer register address: 0x{:04X}", address),
         }
     }
