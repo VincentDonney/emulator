@@ -2676,18 +2676,18 @@ impl CPU {
   
   pub fn interrupts(&mut self) -> Result<(), EmulatorError> {
     if self.bus.ppu.vblank_interrupt == 1 {
-        self.bus.if_reg |= (1 << 0);
+        self.bus.if_reg |= 1 << 0;
 
     }
     if self.bus.ppu.stat_interrupt == 1 {
-      self.bus.if_reg |= (1 << 1);
+      self.bus.if_reg |= 1 << 1;
     }
 
     if self.bus.timer.timer_interrupt == 1 {
-      self.bus.if_reg |= (1 << 2);
+      self.bus.if_reg |= 1 << 2;
     }
     if self.jpad_interrupt{
-      self.bus.if_reg |= (1 << 4);
+      self.bus.if_reg |= 1 << 4;
     }
 
     if self.bus.ime {
