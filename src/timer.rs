@@ -6,7 +6,7 @@ pub struct Timer{
     pub cycles_counter:u32,
     div_counter:u32,
     tima_counter:u32,
-    pub timer_interrupt:u8
+    pub timer_interrupt:u8,
 }
 
 impl Timer{
@@ -19,12 +19,14 @@ impl Timer{
             cycles_counter: 0,
             div_counter: 0,
             tima_counter: 0,
-            timer_interrupt:0
+            timer_interrupt:0,
         }
     }
 
-    pub fn timer_tick(&mut self, cycles: u32){
-        self.cycles_counter += cycles;
+    pub fn timer_tick(&mut self, cycles: u32,should_cycles:u8){
+        if (should_cycles >> 7) & 1 == 1 {
+            self.cycles_counter += cycles;
+        }
         if (self.tac >> 2) & 1 != 0{
             self.tima_counter += cycles;
             let inc_rate = match self.tac & 0x03 {

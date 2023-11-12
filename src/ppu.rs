@@ -157,8 +157,11 @@ impl PPU{
         //For each address in tilemap
         for i in tilemap.0..tilemap.1 {
             //Read tile index from VRAM
+           
             let tile_index =  self.vram_read(i);
             //Use corresponding addressing mode to get tile address in VRAM
+
+            
             let tile_address = self.addressing_mode(tile_index);
             let mut tile = [0u8;16];
             //Build tile

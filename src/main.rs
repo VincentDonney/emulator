@@ -26,7 +26,7 @@ fn main() {
 
     let mut cpu = cpu::CPU::new();
     let mut i = 0;
-    loop {
+    loop{
         match rx2.try_recv() {
             Ok(data) => {cpu.bus.joypad = data.buttons},
             Err(TryRecvError::Disconnected) => {/* handle sender disconnected */}
@@ -38,7 +38,7 @@ fn main() {
             Err(TryRecvError::Empty) => {/* handle no data available yet */}
         }
         let _ = cpu.interrupts();
-        print!("{} ",i);
+        print!("{} ",i+1);
         cpu.step();
         if cpu.bus.timer.cycles_counter >= 456 {
             if cpu.bus.ppu.ly == 144{
@@ -49,7 +49,10 @@ fn main() {
             
             cpu.bus.timer.cycles_counter = cpu.bus.timer.cycles_counter % 456;
         }
+        println!(" ly: {}",cpu.bus.ppu.ly);
+
+        println!(" Cycles : {}",cpu.bus.timer.cycles_counter);
         i+=1;
+       
     }
-    
 }
