@@ -133,6 +133,7 @@ impl Screen{
             if button_pressed {
                 let _= tx2.send(self.joypad.clone());
                 let _= tx3.send(true);
+                self.joypad.buttons = 0b00111111;
             }
             
             // Update the window buffer and display the changes
@@ -154,14 +155,18 @@ impl Joypad {
     pub fn register_input(button: u8, mode: String, mut joypad: Joypad) -> u8 {
         match mode.as_str() {
             "dpad" => {
-                let clear_bit_mask = !(1 << button); // Create a mask with the bit to clear set to 0
-                joypad.buttons = joypad.buttons & clear_bit_mask;
-                joypad.buttons = joypad.buttons & !(1 << 4);
+                if (joypad.buttons & (1 << 5) != 0){
+                    let clear_bit_mask = !(1 << button); // Create a mask with the bit to clear set to 0
+                    joypad.buttons = joypad.buttons & clear_bit_mask;
+                    joypad.buttons = joypad.buttons & !(1 << 4);
+                }
             },
             "buttons" => {
-                let clear_bit_mask = !(1 << button); // Create a mask with the bit to clear set to 0
-                joypad.buttons = joypad.buttons & clear_bit_mask;
-                joypad.buttons = joypad.buttons & !(1 << 5);
+                if (joypad.buttons & (1 << 4) != 0){
+                    let clear_bit_mask = !(1 << button); // Create a mask with the bit to clear set to 0
+                    joypad.buttons = joypad.buttons & clear_bit_mask;
+                    joypad.buttons = joypad.buttons & !(1 << 5);
+                }
             },
             _ => panic!("Wrong mode selection on joypad")
             
